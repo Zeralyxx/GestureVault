@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "GestureVault (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "GestureVault (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

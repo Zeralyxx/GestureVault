@@ -1,0 +1,205 @@
+<Window
+    x:Class="GestureVault.GestureVerificationWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="GestureVault - Gesture Verification">
+
+    <Grid x:Name="RootGrid"
+          Background="{ThemeResource AppBackgroundBrush}"
+          RequestedTheme="Light">
+
+        <Grid.Resources>
+            <Style x:Key="PrimaryActionButtonStyle" TargetType="Button">
+                <Setter Property="Height" Value="56"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="Background" Value="{ThemeResource AccentBrush}"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="FontSize" Value="18"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="CornerRadius" Value="16"/>
+            </Style>
+
+            <Style x:Key="SecondaryActionButtonStyle" TargetType="Button">
+                <Setter Property="Height" Value="54"/>
+                <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource MutedButtonBorderBrush}"/>
+                <Setter Property="Foreground" Value="{ThemeResource MutedButtonForegroundBrush}"/>
+                <Setter Property="BorderThickness" Value="2"/>
+                <Setter Property="FontSize" Value="17"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="CornerRadius" Value="16"/>
+            </Style>
+        </Grid.Resources>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+
+            <Grid Padding="24,28,24,32">
+                <StackPanel x:Name="ContentStack"
+                        HorizontalAlignment="Center"
+                        Width="440"
+                        MaxWidth="440"
+                        Spacing="22">
+
+                    <!-- Branding -->
+                    <StackPanel HorizontalAlignment="Center" Spacing="8">
+                        <Border Width="60"
+                                Height="60"
+                                CornerRadius="18"
+                                Background="{ThemeResource AccentBrush}">
+                            <Viewbox Margin="12">
+                                <TextBlock Text="🛡"
+                                           Foreground="White"/>
+                            </Viewbox>
+                        </Border>
+
+                        <TextBlock Text="GestureVault"
+                                   FontSize="42"
+                                   FontWeight="SemiBold"
+                                   TextAlignment="Center"
+                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+
+                        <TextBlock Text="Secure multi-modal digital vault"
+                                   FontSize="16"
+                                   TextAlignment="Center"
+                                   Foreground="{ThemeResource SecondaryTextBrush}"/>
+                    </StackPanel>
+
+                    <!-- Heading -->
+                    <StackPanel HorizontalAlignment="Center" Spacing="6">
+                        <TextBlock Text="Gesture Verification"
+                                   FontSize="46"
+                                   FontWeight="SemiBold"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+
+                        <TextBlock Text="Step 2 of 3 • Show your registered hand gesture"
+                                   FontSize="15"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   Foreground="{ThemeResource SecondaryTextBrush}"/>
+                    </StackPanel>
+
+                    <!-- Gesture Card -->
+                    <Border HorizontalAlignment="Stretch"
+                            Background="{ThemeResource CardBackgroundBrush}"
+                            BorderBrush="{ThemeResource CardBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="28"
+                            Padding="32">
+
+                        <StackPanel Spacing="22">
+
+                            <!-- Camera Preview Placeholder -->
+                            <Border Height="280"
+                                    CornerRadius="22"
+                                    Background="#EAF2FF"
+                                    BorderBrush="{ThemeResource InputBorderBrush}"
+                                    BorderThickness="2">
+                                <Grid>
+                                    <StackPanel HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Spacing="10">
+                                        <TextBlock Text="✋"
+                                                   FontSize="64"
+                                                   TextAlignment="Center"/>
+
+                                        <TextBlock x:Name="GestureStatusText"
+                                                   Text="Camera preview will appear here"
+                                                   FontSize="20"
+                                                   FontWeight="SemiBold"
+                                                   TextAlignment="Center"
+                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+
+                                        <TextBlock Text="Place your hand inside the frame"
+                                                   FontSize="14"
+                                                   TextAlignment="Center"
+                                                   Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                    </StackPanel>
+
+                                    <!-- Fake scan corner lines -->
+                                    <Border Width="46"
+                                            Height="46"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Top"
+                                            Margin="18"
+                                            BorderBrush="{ThemeResource AccentBrush}"
+                                            BorderThickness="4,4,0,0"
+                                            CornerRadius="8,0,0,0"/>
+
+                                    <Border Width="46"
+                                            Height="46"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="18"
+                                            BorderBrush="{ThemeResource AccentBrush}"
+                                            BorderThickness="0,4,4,0"
+                                            CornerRadius="0,8,0,0"/>
+
+                                    <Border Width="46"
+                                            Height="46"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Bottom"
+                                            Margin="18"
+                                            BorderBrush="{ThemeResource AccentBrush}"
+                                            BorderThickness="4,0,0,4"
+                                            CornerRadius="0,0,0,8"/>
+
+                                    <Border Width="46"
+                                            Height="46"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom"
+                                            Margin="18"
+                                            BorderBrush="{ThemeResource AccentBrush}"
+                                            BorderThickness="0,0,4,4"
+                                            CornerRadius="0,0,8,0"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Detection Info -->
+                            <Border CornerRadius="18"
+                                    BorderBrush="{ThemeResource InputBorderBrush}"
+                                    BorderThickness="2"
+                                    Background="{ThemeResource InputBackgroundBrush}"
+                                    Padding="18,14">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="Detected gesture"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="{ThemeResource SecondaryTextBrush}"/>
+
+                                    <TextBlock x:Name="DetectedGestureText"
+                                               Text="Waiting for hand gesture..."
+                                               FontSize="16"
+                                               TextWrapping="Wrap"
+                                               Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Button x:Name="StartCameraButton"
+                                    Content="Start Camera"
+                                    Style="{StaticResource PrimaryActionButtonStyle}"
+                                    Click="StartCameraButton_Click"/>
+
+                            <TextBlock Text="or"
+                                       FontSize="15"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{ThemeResource SecondaryTextBrush}"/>
+
+                            <Button x:Name="BackButton"
+                                    Content="Back to Password Step"
+                                    Style="{StaticResource SecondaryActionButtonStyle}"
+                                    Click="BackButton_Click"/>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Window>

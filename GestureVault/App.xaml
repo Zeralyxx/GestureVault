@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="GestureVault.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:GestureVault">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+
+                <!-- Light Theme -->
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F5F7FB"/>
+                    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="CardBorderBrush" Color="#D9E2F2"/>
+                    <SolidColorBrush x:Key="PrimaryTextBrush" Color="#1A1A1A"/>
+                    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#667085"/>
+                    <SolidColorBrush x:Key="AccentBrush" Color="#4F8EF7"/>
+                    <SolidColorBrush x:Key="AccentHoverBrush" Color="#3F7DE8"/>
+                    <SolidColorBrush x:Key="InputBorderBrush" Color="#B8C7E0"/>
+                    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="MutedButtonBorderBrush" Color="#AFC4E8"/>
+                    <SolidColorBrush x:Key="MutedButtonForegroundBrush" Color="#2F5FA7"/>
+                </ResourceDictionary>
+
+                <!-- Dark Theme (for future use) -->
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#0B1220"/>
+                    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#111827"/>
+                    <SolidColorBrush x:Key="CardBorderBrush" Color="#263244"/>
+                    <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F9FAFB"/>
+                    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#94A3B8"/>
+                    <SolidColorBrush x:Key="AccentBrush" Color="#60A5FA"/>
+                    <SolidColorBrush x:Key="AccentHoverBrush" Color="#3B82F6"/>
+                    <SolidColorBrush x:Key="InputBorderBrush" Color="#334155"/>
+                    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#0F172A"/>
+                    <SolidColorBrush x:Key="MutedButtonBorderBrush" Color="#3B82F6"/>
+                    <SolidColorBrush x:Key="MutedButtonForegroundBrush" Color="#BFDBFE"/>
+                </ResourceDictionary>
+
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
+</Application>
