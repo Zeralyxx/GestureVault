@@ -127,7 +127,7 @@
                                        TextWrapping="Wrap"
                                        Foreground="{ThemeResource PrimaryTextBrush}"/>
 
-                            <TextBlock Text="Step 3 of 3 • Speak your secret passphrase"
+                            <TextBlock Text="Step 2 of 3 • Speak your secret passphrase"
                                        FontSize="15"
                                        TextAlignment="Center"
                                        TextWrapping="Wrap"
@@ -243,7 +243,7 @@
 
                             <!-- Back / Cancel -->
                             <Button x:Name="BackButton"
-                                    Content="Back to Gesture Step"
+                                    Content="Back to Password Step"
                                     Style="{StaticResource SecondaryActionButtonStyle}"
                                     Click="BackButton_Click"/>
 

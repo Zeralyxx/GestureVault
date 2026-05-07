@@ -78,7 +78,7 @@
                                    TextWrapping="Wrap"
                                    Foreground="{ThemeResource PrimaryTextBrush}"/>
 
-                        <TextBlock Text="Step 2 of 3 • Show your registered hand gesture"
+                        <TextBlock Text="Step 3 of 3 • Show your registered hand gesture"
                                    FontSize="15"
                                    TextAlignment="Center"
                                    TextWrapping="Wrap"
@@ -192,7 +192,7 @@
                                        Foreground="{ThemeResource SecondaryTextBrush}"/>
 
                             <Button x:Name="BackButton"
-                                    Content="Back to Password Step"
+                                    Content="Back to Voice Step"
                                     Style="{StaticResource SecondaryActionButtonStyle}"
                                     Click="BackButton_Click"/>
                         </StackPanel>

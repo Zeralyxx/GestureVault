@@ -14,12 +14,19 @@
                 <Setter Property="FontWeight" Value="SemiBold"/>
                 <Setter Property="CornerRadius" Value="14"/>
             </Style>
-
             <Style x:Key="CardButtonStyle" TargetType="Button">
                 <Setter Property="Height" Value="42"/>
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="BorderBrush" Value="{ThemeResource MutedButtonBorderBrush}"/>
                 <Setter Property="Foreground" Value="{ThemeResource MutedButtonForegroundBrush}"/>
+                <Setter Property="BorderThickness" Value="2"/>
+                <Setter Property="CornerRadius" Value="12"/>
+            </Style>
+            <Style x:Key="DangerButtonStyle" TargetType="Button">
+                <Setter Property="Height" Value="42"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderBrush" Value="#E53935"/>
+                <Setter Property="Foreground" Value="#E53935"/>
                 <Setter Property="BorderThickness" Value="2"/>
                 <Setter Property="CornerRadius" Value="12"/>
             </Style>
@@ -40,36 +47,24 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Border Width="52"
-                            Height="52"
-                            CornerRadius="16"
+                    <Border Width="52" Height="52" CornerRadius="16"
                             Background="{ThemeResource AccentBrush}">
                         <Viewbox Margin="12">
                             <TextBlock Text="🛡" Foreground="White"/>
                         </Viewbox>
                     </Border>
-
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="GestureVault"
-                                   FontSize="30"
-                                   FontWeight="SemiBold"
+                        <TextBlock Text="GestureVault" FontSize="30" FontWeight="SemiBold"
                                    Foreground="{ThemeResource PrimaryTextBrush}"/>
-                        <TextBlock Text="Your secure digital locker"
-                                   FontSize="14"
+                        <TextBlock Text="Your secure digital locker" FontSize="14"
                                    Foreground="{ThemeResource SecondaryTextBrush}"/>
                     </StackPanel>
                 </StackPanel>
 
-                <Button Grid.Column="1"
-                        Content="Settings"
-                        Width="120"
-                        Margin="0,0,12,0"
-                        Style="{StaticResource CardButtonStyle}"
+                <Button Grid.Column="1" Content="Settings" Width="120"
+                        Margin="0,0,12,0" Style="{StaticResource CardButtonStyle}"
                         Click="SettingsButton_Click"/>
-
-                <Button Grid.Column="2"
-                        Content="Lock Vault"
-                        Width="120"
+                <Button Grid.Column="2" Content="Lock Vault" Width="120"
                         Style="{StaticResource PrimaryButtonStyle}"
                         Click="LockVaultButton_Click"/>
             </Grid>
@@ -85,52 +80,39 @@
                 <!-- Sidebar -->
                 <Border Background="{ThemeResource CardBackgroundBrush}"
                         BorderBrush="{ThemeResource CardBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="24"
-                        Padding="20">
-
-                    <StackPanel Spacing="16">
-                        <TextBlock Text="Vault Menu"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
+                        BorderThickness="1" CornerRadius="24" Padding="20">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Vault Menu" FontSize="18" FontWeight="SemiBold"
                                    Foreground="{ThemeResource PrimaryTextBrush}"/>
 
-                        <Button Content="All Files"
+                        <Button x:Name="FilterAllButton" Content="All Items"
                                 HorizontalAlignment="Stretch"
-                                Style="{StaticResource PrimaryButtonStyle}"/>
-
-                        <Button Content="Passwords"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Click="FilterAll_Click"/>
+                        <Button x:Name="FilterPasswordButton" Content="Passwords"
                                 HorizontalAlignment="Stretch"
-                                Style="{StaticResource CardButtonStyle}"/>
-
-                        <Button Content="Secure Notes"
+                                Style="{StaticResource CardButtonStyle}"
+                                Click="FilterPasswords_Click"/>
+                        <Button x:Name="FilterNoteButton" Content="Secure Notes"
                                 HorizontalAlignment="Stretch"
-                                Style="{StaticResource CardButtonStyle}"/>
-
-                        <Button Content="Documents"
+                                Style="{StaticResource CardButtonStyle}"
+                                Click="FilterNotes_Click"/>
+                        <Button x:Name="FilterDocumentButton" Content="Documents"
                                 HorizontalAlignment="Stretch"
-                                Style="{StaticResource CardButtonStyle}"/>
+                                Style="{StaticResource CardButtonStyle}"
+                                Click="FilterDocuments_Click"/>
 
-                        <Button Content="Recovery Codes"
-                                HorizontalAlignment="Stretch"
-                                Style="{StaticResource CardButtonStyle}"/>
-
-                        <Border Height="1"
-                                Background="{ThemeResource CardBorderBrush}"
+                        <Border Height="1" Background="{ThemeResource CardBorderBrush}"
                                 Margin="0,8"/>
 
-                        <TextBlock Text="Vault Status"
-                                   FontSize="14"
-                                   FontWeight="SemiBold"
+                        <TextBlock Text="Vault Status" FontSize="14" FontWeight="SemiBold"
                                    Foreground="{ThemeResource SecondaryTextBrush}"/>
-
-                        <TextBlock Text="Unlocked"
-                                   FontSize="20"
-                                   FontWeight="SemiBold"
+                        <TextBlock Text="Unlocked" FontSize="20" FontWeight="SemiBold"
                                    Foreground="{ThemeResource AccentBrush}"/>
-
-                        <TextBlock Text="Offline storage active"
-                                   FontSize="13"
+                        <TextBlock x:Name="ItemCountText" Text="0 items stored"
+                                   FontSize="13" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource SecondaryTextBrush}"/>
+                        <TextBlock Text="Offline storage active" FontSize="13"
                                    TextWrapping="Wrap"
                                    Foreground="{ThemeResource SecondaryTextBrush}"/>
                     </StackPanel>
@@ -140,9 +122,7 @@
                 <Border Grid.Column="2"
                         Background="{ThemeResource CardBackgroundBrush}"
                         BorderBrush="{ThemeResource CardBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="24"
-                        Padding="24">
+                        BorderThickness="1" CornerRadius="24" Padding="24">
 
                     <Grid>
                         <Grid.RowDefinitions>
@@ -157,227 +137,481 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-
                             <StackPanel>
-                                <TextBlock Text="Stored Vault Items"
-                                           FontSize="28"
-                                           FontWeight="SemiBold"
+                                <TextBlock x:Name="SectionTitle" Text="All Items"
+                                           FontSize="28" FontWeight="SemiBold"
                                            Foreground="{ThemeResource PrimaryTextBrush}"/>
-                                <TextBlock Text="Manage your encrypted passwords, files, notes, and private records."
+                                <TextBlock Text="Manage your encrypted passwords, notes, and documents."
                                            FontSize="14"
                                            Foreground="{ThemeResource SecondaryTextBrush}"/>
                             </StackPanel>
-
-                            <Button Grid.Column="1"
-                                    Content="+ Add Item"
-                                    Width="130"
-                                    Style="{StaticResource PrimaryButtonStyle}"/>
+                            <Button Grid.Column="1" Content="+ Add Item" Width="130"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Click="AddItemButton_Click"/>
                         </Grid>
 
                         <!-- Search Bar -->
-                        <Border Grid.Row="1"
-                                Height="52"
-                                CornerRadius="16"
+                        <Border Grid.Row="1" Height="52" CornerRadius="16"
                                 Margin="0,20,0,18"
                                 BorderBrush="{ThemeResource InputBorderBrush}"
                                 BorderThickness="2"
                                 Background="{ThemeResource InputBackgroundBrush}">
-                            <TextBox PlaceholderText="Search vault items..."
-                                     BorderThickness="0"
-                                     Background="Transparent"
-                                     Padding="14,0"
-                                     VerticalContentAlignment="Center"/>
+                            <TextBox x:Name="SearchBox"
+                                     PlaceholderText="Search vault items..."
+                                     BorderThickness="0" Background="Transparent"
+                                     Foreground="{ThemeResource PrimaryTextBrush}"
+                                     Padding="14,0" VerticalContentAlignment="Center"
+                                     TextChanged="SearchBox_TextChanged">
+                                <TextBox.Resources>
+                                    <ResourceDictionary>
+                                        <ResourceDictionary.ThemeDictionaries>
+                                            <ResourceDictionary x:Key="Light">
+                                                <StaticResource x:Key="TextControlBackground"                       ResourceKey="InputBackgroundBrush"/>
+                                                <StaticResource x:Key="TextControlBackgroundPointerOver"            ResourceKey="InputBackgroundBrush"/>
+                                                <StaticResource x:Key="TextControlBackgroundFocused"                ResourceKey="InputBackgroundBrush"/>
+                                                <StaticResource x:Key="TextControlForeground"                       ResourceKey="PrimaryTextBrush"/>
+                                                <StaticResource x:Key="TextControlForegroundPointerOver"            ResourceKey="PrimaryTextBrush"/>
+                                                <StaticResource x:Key="TextControlForegroundFocused"                ResourceKey="PrimaryTextBrush"/>
+                                                <StaticResource x:Key="TextControlPlaceholderForeground"            ResourceKey="SecondaryTextBrush"/>
+                                                <StaticResource x:Key="TextControlPlaceholderForegroundPointerOver" ResourceKey="SecondaryTextBrush"/>
+                                                <StaticResource x:Key="TextControlPlaceholderForegroundFocused"     ResourceKey="SecondaryTextBrush"/>
+                                            </ResourceDictionary>
+                                            <ResourceDictionary x:Key="Dark">
+                                                <StaticResource x:Key="TextControlBackground"                       ResourceKey="InputBackgroundBrush"/>
+                                                <StaticResource x:Key="TextControlBackgroundPointerOver"            ResourceKey="InputBackgroundBrush"/>
+                                                <StaticResource x:Key="TextControlBackgroundFocused"                ResourceKey="InputBackgroundBrush"/>
+                                                <StaticResource x:Key="TextControlForeground"                       ResourceKey="PrimaryTextBrush"/>
+                                                <StaticResource x:Key="TextControlForegroundPointerOver"            ResourceKey="PrimaryTextBrush"/>
+                                                <StaticResource x:Key="TextControlForegroundFocused"                ResourceKey="PrimaryTextBrush"/>
+                                                <StaticResource x:Key="TextControlPlaceholderForeground"            ResourceKey="SecondaryTextBrush"/>
+                                                <StaticResource x:Key="TextControlPlaceholderForegroundPointerOver" ResourceKey="SecondaryTextBrush"/>
+                                                <StaticResource x:Key="TextControlPlaceholderForegroundFocused"     ResourceKey="SecondaryTextBrush"/>
+                                            </ResourceDictionary>
+                                        </ResourceDictionary.ThemeDictionaries>
+                                    </ResourceDictionary>
+                                </TextBox.Resources>
+                            </TextBox>
                         </Border>
 
-
-                        <!-- File Cards -->
+                        <!-- Item List -->
                         <ScrollViewer Grid.Row="2">
-                            <StackPanel Spacing="14">
-
-                                <Border CornerRadius="18"
-                                        BorderBrush="{ThemeResource CardBorderBrush}"
-                                        BorderThickness="1"
-                                        Padding="18"
-                                        Background="{ThemeResource InputBackgroundBrush}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <TextBlock Text="🔑"
-                                                   FontSize="28"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,0,14,0"/>
-
-                                        <StackPanel Grid.Column="1">
-                                            <TextBlock Text="Facebook Account"
-                                                       FontSize="18"
-                                                       FontWeight="SemiBold"/>
-                                            <TextBlock Text="Password • Last updated today"
-                                                       FontSize="13"
-                                                       Foreground="{ThemeResource SecondaryTextBrush}"/>
-                                        </StackPanel>
-
-                                        <Button Grid.Column="2"
-                                                Content="Open"
-                                                Width="90"
-                                                Style="{StaticResource CardButtonStyle}"/>
-                                    </Grid>
-                                </Border>
-
-                                <Border CornerRadius="18"
-                                        BorderBrush="{ThemeResource CardBorderBrush}"
-                                        BorderThickness="1"
-                                        Padding="18"
-                                        Background="{ThemeResource InputBackgroundBrush}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <TextBlock Text="📝"
-                                                   FontSize="28"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,0,14,0"/>
-
-                                        <StackPanel Grid.Column="1">
-                                            <TextBlock Text="Personal Secure Note"
-                                                       FontSize="18"
-                                                       FontWeight="SemiBold"/>
-                                            <TextBlock Text="Secure Note • Offline encrypted"
-                                                       FontSize="13"
-                                                       Foreground="{ThemeResource SecondaryTextBrush}"/>
-                                        </StackPanel>
-
-                                        <Button Grid.Column="2"
-                                                Content="Open"
-                                                Width="90"
-                                                Style="{StaticResource CardButtonStyle}"/>
-                                    </Grid>
-                                </Border>
-
-                                <Border CornerRadius="18"
-                                        BorderBrush="{ThemeResource CardBorderBrush}"
-                                        BorderThickness="1"
-                                        Padding="18"
-                                        Background="{ThemeResource InputBackgroundBrush}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <TextBlock Text="📄"
-                                                   FontSize="28"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,0,14,0"/>
-
-                                        <StackPanel Grid.Column="1">
-                                            <TextBlock Text="School Document"
-                                                       FontSize="18"
-                                                       FontWeight="SemiBold"/>
-                                            <TextBlock Text="File • Protected document"
-                                                       FontSize="13"
-                                                       Foreground="{ThemeResource SecondaryTextBrush}"/>
-                                        </StackPanel>
-
-                                        <Button Grid.Column="2"
-                                                Content="Open"
-                                                Width="90"
-                                                Style="{StaticResource CardButtonStyle}"/>
-                                    </Grid>
-                                </Border>
-
-                            </StackPanel>
+                            <StackPanel x:Name="VaultItemsPanel" Spacing="14"/>
                         </ScrollViewer>
                     </Grid>
                 </Border>
             </Grid>
         </Grid>
-        <!-- Settings Popup Overlay -->
-        <Grid x:Name="SettingsOverlay"
-      Visibility="Collapsed"
-      Background="#99000000">
 
-            <Border Width="460"
-            CornerRadius="28"
-            Padding="28"
-            Background="White"
-            BorderBrush="{ThemeResource CardBorderBrush}"
-            BorderThickness="1"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center">
+        <!-- ── Add Item Overlay ───────────────────────────────────────────── -->
+        <Grid x:Name="AddItemOverlay" Visibility="Collapsed" Background="#99000000">
+            <Border Width="500" CornerRadius="28" Padding="28"
+                    Background="{ThemeResource CardBackgroundBrush}" BorderBrush="{ThemeResource CardBorderBrush}"
+                    BorderThickness="1"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="Add Vault Item" FontSize="26"
+                               FontWeight="SemiBold" Foreground="{ThemeResource PrimaryTextBrush}"/>
 
-                <StackPanel Spacing="20">
-
-                    <TextBlock Text="Settings"
-                       FontSize="30"
-                       FontWeight="SemiBold"
-                       Foreground="#1A1A1A"/>
-
-                    <TextBlock Text="Manage your vault preferences."
-                       FontSize="14"
-                       Foreground="#667085"/>
-
-                    <ToggleSwitch Header="Auto-lock vault"
-                            IsOn="True"/>
-
-                    <ComboBox Header="Auto-lock after"
-                      SelectedIndex="1"
-                      HorizontalAlignment="Stretch"
-                      CornerRadius="12">
-                        <ComboBoxItem Content="1 minute"/>
-                        <ComboBoxItem Content="5 minutes"/>
-                        <ComboBoxItem Content="10 minutes"/>
-                        <ComboBoxItem Content="30 minutes"/>
+                    <!-- Type picker -->
+                    <ComboBox x:Name="ItemTypeCombo" Header="Item type"
+                              SelectedIndex="0" HorizontalAlignment="Stretch"
+                              CornerRadius="12"
+                              SelectionChanged="ItemTypeCombo_SelectionChanged">
+                        <ComboBoxItem Content="🔑  Password"/>
+                        <ComboBoxItem Content="📝  Secure Note"/>
+                        <ComboBoxItem Content="📄  Document"/>
                     </ComboBox>
 
-                    <ToggleSwitch Header="Require gesture + voice every unlock"
-                        IsOn="True"/>
+                    <!-- Title -->
+                    <TextBox x:Name="ItemTitleBox" Header="Title"
+                             PlaceholderText="e.g. Facebook Account"
+                             CornerRadius="12"/>
 
-                    <ToggleSwitch Header="Light mode (coming soon)"
-                          IsOn="True"
-                          IsEnabled="False"/>
+                    <!-- Password fields (shown when type = Password) -->
+                    <StackPanel x:Name="PasswordFields" Spacing="12">
+                        <TextBox x:Name="ItemUsernameBox" Header="Username / Email"
+                                 PlaceholderText="e.g. john@email.com"
+                                 CornerRadius="12"/>
+                        <PasswordBox x:Name="ItemPasswordBox" Header="Password"
+                                     CornerRadius="12"/>
+                        <TextBox x:Name="ItemUrlBox" Header="Website URL (optional)"
+                                 PlaceholderText="e.g. https://facebook.com"
+                                 CornerRadius="12"/>
+                    </StackPanel>
 
-                    <!-- Action Buttons -->
-                    <Grid Margin="0,10,0,0">
+                    <!-- Note field (shown when type = Secure Note) -->
+                    <TextBox x:Name="NoteContentBox"
+                             Header="Note content"
+                             PlaceholderText="Write your secure note here..."
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             Height="120"
+                             CornerRadius="12"
+                             Visibility="Collapsed"/>
+
+                    <!-- Document field (shown when type = Document) -->
+                    <StackPanel x:Name="DocumentFields" Spacing="8" Visibility="Collapsed">
+                        <TextBox x:Name="ItemDescriptionBox"
+                            Header="Description"
+                            PlaceholderText="Brief description of this document"
+                            CornerRadius="12"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="+ Choose Files..."
+                                HorizontalAlignment="Stretch"
+                                Style="{StaticResource CardButtonStyle}"
+                                Click="ChooseFileButton_Click"/>
+                            <Button Grid.Column="2" Content="📁 Choose Folder..."
+                                HorizontalAlignment="Stretch"
+                                Style="{StaticResource CardButtonStyle}"
+                                Click="ChooseFolderButton_Click"/>
+                        </Grid>
+                        <TextBlock x:Name="ChosenFileText"
+                            Text="No files added yet"
+                            FontSize="13"
+                            Foreground="{ThemeResource SecondaryTextBrush}"/>
+                        <!-- Dynamically populated with pending file rows -->
+                        <StackPanel x:Name="PendingFilesList" Spacing="4"/>
+                    </StackPanel>
+
+                    <!-- Buttons -->
+                    <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="12"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-
-                        <!-- Close -->
-                        <Button Grid.Column="0"
-                            Content="Close"
-                            Height="48"
-                            CornerRadius="16"
-                            Background="Transparent"
-                            BorderBrush="{ThemeResource MutedButtonBorderBrush}"
-                            BorderThickness="2"
-                            Foreground="{ThemeResource PrimaryTextBrush}"
-                            FontWeight="SemiBold"
-                            HorizontalAlignment="Stretch"
-                            Click="CloseSettingsButton_Click"/>
-
-                        <!-- Save -->
-                        <Button Grid.Column="2"
-                            Content="Save"
-                            Height="48"
-                            CornerRadius="16"
-                            Background="{ThemeResource AccentBrush}"
-                            Foreground="White"
-                            FontWeight="SemiBold"
-                            HorizontalAlignment="Stretch"
-                            Click="SaveSettingsButton_Click"/>
+                        <Button Grid.Column="0" Content="Cancel" Height="48"
+                                CornerRadius="16" Background="Transparent"
+                                BorderBrush="{ThemeResource MutedButtonBorderBrush}"
+                                BorderThickness="2"
+                                Foreground="{ThemeResource PrimaryTextBrush}"
+                                FontWeight="SemiBold" HorizontalAlignment="Stretch"
+                                Click="CancelAddItem_Click"/>
+                        <Button Grid.Column="2" Content="Save Item" Height="48"
+                                CornerRadius="16"
+                                Background="{ThemeResource AccentBrush}"
+                                Foreground="White" FontWeight="SemiBold"
+                                HorizontalAlignment="Stretch"
+                                Click="SaveItemButton_Click"/>
                     </Grid>
                 </StackPanel>
             </Border>
         </Grid>
+
+        <!-- ── View / Edit Item Overlay ───────────────────────────────────── -->
+        <Grid x:Name="ViewItemOverlay" Visibility="Collapsed" Background="#99000000">
+            <Border Width="520"
+                    MaxHeight="880"
+                    CornerRadius="28"
+                    Background="{ThemeResource CardBackgroundBrush}"
+                    BorderBrush="{ThemeResource CardBorderBrush}"
+                    BorderThickness="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <!-- Fixed header -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- Scrollable content -->
+                        <RowDefinition Height="*"/>
+                        <!-- Fixed footer buttons -->
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header (always visible) -->
+                    <StackPanel Grid.Row="0" Spacing="4" Padding="28,28,28,12">
+                        <TextBlock x:Name="ViewItemTitle" Text="Item"
+                                   FontSize="26" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+                        <TextBlock x:Name="ViewItemType" FontSize="13"
+                                   Foreground="{ThemeResource SecondaryTextBrush}"/>
+                    </StackPanel>
+
+                    <!-- Scrollable dynamic content -->
+                    <ScrollViewer Grid.Row="1"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="28,0,28,0">
+                        <StackPanel x:Name="ViewItemContent" Spacing="12"
+                                    Margin="0,0,0,16"/>
+                    </ScrollViewer>
+
+                    <!-- Footer buttons (always visible) -->
+                    <Grid Grid.Row="2" Padding="28,12,28,28">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="Delete" Height="48"
+                                HorizontalAlignment="Stretch"
+                                Style="{StaticResource DangerButtonStyle}"
+                                Click="DeleteItemButton_Click"/>
+                        <Button Grid.Column="2" Content="Close" Height="48"
+                                CornerRadius="16"
+                                Background="{ThemeResource AccentBrush}"
+                                Foreground="White" FontWeight="SemiBold"
+                                HorizontalAlignment="Stretch"
+                                Click="CloseViewItem_Click"/>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ── Settings Overlay ───────────────────────────────────────────── -->
+        <Grid x:Name="SettingsOverlay" Visibility="Collapsed" Background="#99000000">
+            <Border Width="520" CornerRadius="28"
+                    Background="{ThemeResource CardBackgroundBrush}" BorderBrush="{ThemeResource CardBorderBrush}"
+                    BorderThickness="1"
+                    MaxHeight="860"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <StackPanel Grid.Row="0" Padding="28,28,28,0" Spacing="4">
+                        <TextBlock Text="Settings" FontSize="30" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+                        <TextBlock Text="Manage your vault preferences and security credentials."
+                                   FontSize="14" Foreground="{ThemeResource SecondaryTextBrush}"/>
+                    </StackPanel>
+
+                    <!-- Scrollable body -->
+                    <ScrollViewer Grid.Row="1"
+                                  VerticalScrollBarVisibility="Auto"
+                                  Padding="28,20,28,0">
+                        <StackPanel Spacing="20">
+
+                            <!-- ── Vault behaviour ────────────────────────── -->
+                            <TextBlock Text="Vault Behaviour"
+                                       FontSize="13" FontWeight="SemiBold"
+                                       Foreground="{ThemeResource SecondaryTextBrush}"/>
+
+                            <ToggleSwitch x:Name="AutoLockToggle"
+                                          Header="Auto-lock vault" IsOn="True"/>
+
+                            <ComboBox x:Name="AutoLockCombo" Header="Auto-lock after"
+                                      SelectedIndex="1" HorizontalAlignment="Stretch"
+                                      CornerRadius="12">
+                                <ComboBoxItem Content="1 minute"/>
+                                <ComboBoxItem Content="5 minutes"/>
+                                <ComboBoxItem Content="10 minutes"/>
+                                <ComboBoxItem Content="30 minutes"/>
+                            </ComboBox>
+
+                            <ToggleSwitch x:Name="LightModeToggle"
+                                          Header="Light mode" IsOn="True"/>
+
+                            <!-- ── Divider ─────────────────────────────────── -->
+                            <Border Height="1" Background="{ThemeResource CardBorderBrush}" Margin="0,4"/>
+
+                            <!-- ── Change Password ─────────────────────────── -->
+                            <TextBlock Text="Security Credentials"
+                                       FontSize="13" FontWeight="SemiBold"
+                                       Foreground="{ThemeResource SecondaryTextBrush}"/>
+
+                            <!-- Change Password card -->
+                            <Border CornerRadius="16" Padding="18"
+                                    Background="{ThemeResource InputBackgroundBrush}"
+                                    BorderBrush="{ThemeResource InputBorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="14">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="🔑  Master Password"
+                                                   FontSize="15" FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                        <TextBlock Text="Change the password used to unlock your vault."
+                                                   FontSize="13" TextWrapping="Wrap"
+                                                   Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                    </StackPanel>
+
+                                    <!-- Current password -->
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Current Password"
+                                                   FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                        <PasswordBox x:Name="CurrentPasswordBox"
+                                                     PlaceholderText="Enter current password"
+                                                     CornerRadius="12"/>
+                                    </StackPanel>
+
+                                    <!-- New password -->
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="New Password"
+                                                   FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                        <PasswordBox x:Name="ChangeNewPasswordBox"
+                                                     PlaceholderText="Enter new password (min 8 chars)"
+                                                     CornerRadius="12"/>
+                                    </StackPanel>
+
+                                    <!-- Confirm new password -->
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Confirm New Password"
+                                                   FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                        <PasswordBox x:Name="ChangeConfirmPasswordBox"
+                                                     PlaceholderText="Repeat new password"
+                                                     CornerRadius="12"/>
+                                    </StackPanel>
+
+                                    <Button Content="Update Password"
+                                            HorizontalAlignment="Stretch"
+                                            Height="44" CornerRadius="12"
+                                            Background="{ThemeResource AccentBrush}"
+                                            Foreground="White" FontWeight="SemiBold"
+                                            Click="ChangePasswordButton_Click"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Change Passphrase card -->
+                            <Border CornerRadius="16" Padding="18"
+                                    Background="{ThemeResource InputBackgroundBrush}"
+                                    BorderBrush="{ThemeResource InputBorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="14">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="🎙  Voice Passphrase"
+                                                   FontSize="15" FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                        <TextBlock Text="Change the phrase you speak to verify your voice."
+                                                   FontSize="13" TextWrapping="Wrap"
+                                                   Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="New Passphrase"
+                                                   FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                        <Border CornerRadius="12" Height="52"
+                                                BorderBrush="{ThemeResource InputBorderBrush}"
+                                                BorderThickness="2"
+                                                Background="{ThemeResource InputBackgroundBrush}">
+                                            <TextBox x:Name="ChangePassphraseBox"
+                                                     PlaceholderText="e.g. open the blue garden gate"
+                                                     BorderThickness="0" Background="Transparent"
+                                                     Foreground="{ThemeResource PrimaryTextBrush}"
+                                                     Padding="14,0" VerticalContentAlignment="Center"
+                                                     FontSize="15">
+                                                <TextBox.Resources>
+                                                    <ResourceDictionary>
+                                                        <ResourceDictionary.ThemeDictionaries>
+                                                            <ResourceDictionary x:Key="Light">
+                                                                <StaticResource x:Key="TextControlBackground"                    ResourceKey="InputBackgroundBrush"/>
+                                                                <StaticResource x:Key="TextControlBackgroundPointerOver"         ResourceKey="InputBackgroundBrush"/>
+                                                                <StaticResource x:Key="TextControlBackgroundFocused"             ResourceKey="InputBackgroundBrush"/>
+                                                                <StaticResource x:Key="TextControlForeground"                    ResourceKey="PrimaryTextBrush"/>
+                                                                <StaticResource x:Key="TextControlForegroundPointerOver"         ResourceKey="PrimaryTextBrush"/>
+                                                                <StaticResource x:Key="TextControlForegroundFocused"             ResourceKey="PrimaryTextBrush"/>
+                                                                <StaticResource x:Key="TextControlPlaceholderForeground"         ResourceKey="SecondaryTextBrush"/>
+                                                                <StaticResource x:Key="TextControlPlaceholderForegroundPointerOver" ResourceKey="SecondaryTextBrush"/>
+                                                                <StaticResource x:Key="TextControlPlaceholderForegroundFocused"  ResourceKey="SecondaryTextBrush"/>
+                                                            </ResourceDictionary>
+                                                            <ResourceDictionary x:Key="Dark">
+                                                                <StaticResource x:Key="TextControlBackground"                    ResourceKey="InputBackgroundBrush"/>
+                                                                <StaticResource x:Key="TextControlBackgroundPointerOver"         ResourceKey="InputBackgroundBrush"/>
+                                                                <StaticResource x:Key="TextControlBackgroundFocused"             ResourceKey="InputBackgroundBrush"/>
+                                                                <StaticResource x:Key="TextControlForeground"                    ResourceKey="PrimaryTextBrush"/>
+                                                                <StaticResource x:Key="TextControlForegroundPointerOver"         ResourceKey="PrimaryTextBrush"/>
+                                                                <StaticResource x:Key="TextControlForegroundFocused"             ResourceKey="PrimaryTextBrush"/>
+                                                                <StaticResource x:Key="TextControlPlaceholderForeground"         ResourceKey="SecondaryTextBrush"/>
+                                                                <StaticResource x:Key="TextControlPlaceholderForegroundPointerOver" ResourceKey="SecondaryTextBrush"/>
+                                                                <StaticResource x:Key="TextControlPlaceholderForegroundFocused"  ResourceKey="SecondaryTextBrush"/>
+                                                            </ResourceDictionary>
+                                                        </ResourceDictionary.ThemeDictionaries>
+                                                    </ResourceDictionary>
+                                                </TextBox.Resources>
+                                            </TextBox>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <Button Content="Update Passphrase"
+                                            HorizontalAlignment="Stretch"
+                                            Height="44" CornerRadius="12"
+                                            Background="{ThemeResource AccentBrush}"
+                                            Foreground="White" FontWeight="SemiBold"
+                                            Click="ChangePassphraseButton_Click"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Change Gesture card (placeholder) -->
+                            <Border CornerRadius="16" Padding="18"
+                                    Background="{ThemeResource InputBackgroundBrush}"
+                                    BorderBrush="{ThemeResource InputBorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="14">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="📷  Hand Gesture"
+                                                   FontSize="15" FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                        <TextBlock Text="Re-register your hand gesture for camera verification."
+                                                   FontSize="13" TextWrapping="Wrap"
+                                                   Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                    </StackPanel>
+
+                                    <!-- Placeholder camera area -->
+                                    <Border Height="100" CornerRadius="12"
+                                            Background="{ThemeResource CardBackgroundBrush}"
+                                            BorderBrush="{ThemeResource CardBorderBrush}" BorderThickness="1">
+                                        <StackPanel VerticalAlignment="Center"
+                                                    HorizontalAlignment="Center" Spacing="6">
+                                            <TextBlock Text="📷" FontSize="28"
+                                                       HorizontalAlignment="Center"/>
+                                            <TextBlock Text="Gesture re-registration coming soon"
+                                                       FontSize="13" FontWeight="SemiBold"
+                                                       TextAlignment="Center"
+                                                       Foreground="{ThemeResource AccentBrush}"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Button Content="Re-register Gesture (Coming Soon)"
+                                            HorizontalAlignment="Stretch"
+                                            Height="44" CornerRadius="12"
+                                            IsEnabled="False"
+                                            Background="Transparent"
+                                            BorderBrush="{ThemeResource MutedButtonBorderBrush}"
+                                            BorderThickness="2"
+                                            Foreground="{ThemeResource MutedButtonForegroundBrush}"
+                                            FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Bottom spacer -->
+                            <Border Height="8"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Footer buttons -->
+                    <Grid Grid.Row="2" Padding="28,16,28,28">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="Close" Height="48"
+                                CornerRadius="16" Background="Transparent"
+                                BorderBrush="{ThemeResource MutedButtonBorderBrush}"
+                                BorderThickness="2"
+                                Foreground="{ThemeResource PrimaryTextBrush}"
+                                FontWeight="SemiBold" HorizontalAlignment="Stretch"
+                                Click="CloseSettingsButton_Click"/>
+                        <Button Grid.Column="2" Content="Save" Height="48"
+                                CornerRadius="16"
+                                Background="{ThemeResource AccentBrush}"
+                                Foreground="White" FontWeight="SemiBold"
+                                HorizontalAlignment="Stretch"
+                                Click="SaveSettingsButton_Click"/>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
     </Grid>
 </Window>

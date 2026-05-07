@@ -41,9 +41,9 @@ namespace GestureVault
                 GestureStatusText.Text = "Gesture verified";
                 DetectedGestureText.Text = "Gesture matched successfully";
 
-                // 👉 Move to voice step
-                var voiceWindow = new VoiceVerificationWindow();
-                voiceWindow.Activate();
+                // 👉 Move to vault dashboard
+                var vaultWindow = new VaultDashboardWindow();
+                vaultWindow.Activate();
 
                 this.Close();
             }
@@ -51,8 +51,8 @@ namespace GestureVault
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            var mainWindow = new MainWindow();
-            mainWindow.Activate();
+            var voiceWindow = new VoiceVerificationWindow();
+            voiceWindow.Activate();
 
             this.Close();
         }

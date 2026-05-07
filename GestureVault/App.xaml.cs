@@ -43,7 +43,22 @@ namespace GestureVault
         /// <param name="args">Details about the launch request and process.</param>
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-            _window = new MainWindow();
+            // ── Startup: wipe any temp files left over from a previous crash ──
+            try
+            {
+                string tempDir = System.IO.Path.Combine(
+                    Windows.Storage.ApplicationData.Current.LocalFolder.Path, "temp");
+                if (System.IO.Directory.Exists(tempDir))
+                    foreach (string f in System.IO.Directory.GetFiles(tempDir))
+                        GestureVault.Services.EncryptionService.SecureDeleteTemp(f);
+            }
+            catch { /* best-effort startup sweep */ }
+
+            // ── Route: first launch → Registration, returning user → Login ────
+            bool registered = Windows.Storage.ApplicationData.Current.LocalSettings
+                                  .Values["RegistrationComplete"] as bool? ?? false;
+
+            _window = registered ? new MainWindow() : (Window)new RegistrationWindow();
             _window.Activate();
         }
     }
