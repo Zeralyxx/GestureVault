@@ -437,31 +437,154 @@
                                     <!-- Current password -->
                                     <StackPanel Spacing="6">
                                         <TextBlock Text="Current Password"
-                                                   FontSize="13" FontWeight="SemiBold"
-                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
-                                        <PasswordBox x:Name="CurrentPasswordBox"
-                                                     PlaceholderText="Enter current password"
-                                                     CornerRadius="12"/>
+                                           FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                                                    <Border CornerRadius="12" Height="52"
+                                            BorderBrush="{ThemeResource InputBorderBrush}"
+                                            BorderThickness="2"
+                                            Background="{ThemeResource InputBackgroundBrush}">
+                                            <Grid VerticalAlignment="Stretch">
+                                                <PasswordBox x:Name="CurrentPasswordBox"
+                                                             IsPasswordRevealButtonEnabled="False"
+                                                             PlaceholderText="Enter current password"
+                                                             BorderThickness="0" Background="Transparent"
+                                                             VerticalAlignment="Stretch"
+                                                             VerticalContentAlignment="Center"
+                                                             Padding="14,0,44,0"
+                                                             HorizontalAlignment="Stretch">
+                                                    <PasswordBox.Resources>
+                                                        <Thickness x:Key="TextControlThemePadding">14,0,44,0</Thickness>
+                                                    </PasswordBox.Resources>
+                                                </PasswordBox>
+
+                                                <TextBox x:Name="CurrentPasswordTextBox"
+                                                         PlaceholderText="Enter current password"
+                                                         BorderThickness="0" Background="Transparent"
+                                                         VerticalAlignment="Stretch"
+                                                         VerticalContentAlignment="Center"
+                                                         Padding="14,0,44,0"
+                                                         Visibility="Collapsed"
+                                                         HorizontalAlignment="Stretch">
+                                                    <TextBox.Resources>
+                                                        <Thickness x:Key="TextControlThemePadding">14,0,44,0</Thickness>
+                                                    </TextBox.Resources>
+                                                </TextBox>
+                                                <Button x:Name="ToggleCurrentPwBtn"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Stretch" VerticalContentAlignment="Center"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Padding="10,0" Margin="0,0,4,0"
+                                                    Click="ToggleCurrentPw_Click">
+                                                    <TextBlock x:Name="EyeIconCurrent"
+                                                       Text="&#xE7B3;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="16"
+                                                       VerticalAlignment="Center"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
                                     </StackPanel>
 
                                     <!-- New password -->
                                     <StackPanel Spacing="6">
                                         <TextBlock Text="New Password"
-                                                   FontSize="13" FontWeight="SemiBold"
-                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
-                                        <PasswordBox x:Name="ChangeNewPasswordBox"
-                                                     PlaceholderText="Enter new password (min 8 chars)"
-                                                     CornerRadius="12"/>
+                                               FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                          <Border CornerRadius="12" Height="52"
+                                                BorderBrush="{ThemeResource InputBorderBrush}"
+                                                BorderThickness="2"
+                                                Background="{ThemeResource InputBackgroundBrush}">
+                                            <Grid VerticalAlignment="Stretch">
+                                                <PasswordBox x:Name="ChangeNewPasswordBox"
+                                                             IsPasswordRevealButtonEnabled="False"
+                                                             PlaceholderText="Enter current password"
+                                                             BorderThickness="0" Background="Transparent"
+                                                             VerticalAlignment="Stretch"
+                                                             VerticalContentAlignment="Center"
+                                                             Padding="14,0,44,0"
+                                                             HorizontalAlignment="Stretch">
+                                                    <PasswordBox.Resources>
+                                                        <Thickness x:Key="TextControlThemePadding">14,0,44,0</Thickness>
+                                                    </PasswordBox.Resources>
+                                                </PasswordBox>
+
+                                                <TextBox x:Name="ChangeNewPasswordTextBox"
+                                                         PlaceholderText="Enter current password"
+                                                         BorderThickness="0" Background="Transparent"
+                                                         VerticalAlignment="Stretch"
+                                                         VerticalContentAlignment="Center"
+                                                         Padding="14,0,44,0"
+                                                         Visibility="Collapsed"
+                                                         HorizontalAlignment="Stretch">
+                                                    <TextBox.Resources>
+                                                        <Thickness x:Key="TextControlThemePadding">14,0,44,0</Thickness>
+                                                    </TextBox.Resources>
+                                                </TextBox>
+                                                <Button x:Name="ToggleNewPwBtn"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Stretch" VerticalContentAlignment="Center"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Padding="10,0" Margin="0,0,4,0"
+                                                    Click="ToggleNewPw_Click">
+                                                    <TextBlock x:Name="EyeIconNew"
+                                                       Text="&#xE7B3;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="16"
+                                                       VerticalAlignment="Center"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
                                     </StackPanel>
 
                                     <!-- Confirm new password -->
                                     <StackPanel Spacing="6">
                                         <TextBlock Text="Confirm New Password"
-                                                   FontSize="13" FontWeight="SemiBold"
-                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
-                                        <PasswordBox x:Name="ChangeConfirmPasswordBox"
-                                                     PlaceholderText="Repeat new password"
-                                                     CornerRadius="12"/>
+                                           FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                        <Border CornerRadius="12" Height="52"
+                                            BorderBrush="{ThemeResource InputBorderBrush}"
+                                            BorderThickness="2"
+                                            Background="{ThemeResource InputBackgroundBrush}">
+                                            <Grid VerticalAlignment="Stretch">
+                                                <PasswordBox x:Name="ChangeConfirmPasswordBox"
+                                                             IsPasswordRevealButtonEnabled="False"
+                                                             PlaceholderText="Enter current password"
+                                                             BorderThickness="0" Background="Transparent"
+                                                             VerticalAlignment="Stretch"
+                                                             VerticalContentAlignment="Center"
+                                                             Padding="14,0,44,0"
+                                                             HorizontalAlignment="Stretch">
+                                                    <PasswordBox.Resources>
+                                                        <Thickness x:Key="TextControlThemePadding">14,0,44,0</Thickness>
+                                                    </PasswordBox.Resources>
+                                                </PasswordBox>
+
+                                                <TextBox x:Name="ChangeConfirmPasswordTextBox"
+                                                         PlaceholderText="Enter current password"
+                                                         BorderThickness="0" Background="Transparent"
+                                                         VerticalAlignment="Stretch"
+                                                         VerticalContentAlignment="Center"
+                                                         Padding="14,0,44,0"
+                                                         Visibility="Collapsed"
+                                                         HorizontalAlignment="Stretch">
+                                                    <TextBox.Resources>
+                                                        <Thickness x:Key="TextControlThemePadding">14,0,44,0</Thickness>
+                                                    </TextBox.Resources>
+                                                </TextBox>
+                                                <Button x:Name="ToggleConfirmPwBtn"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Stretch" VerticalContentAlignment="Center" 
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Padding="10,0" Margin="0,0,4,0"
+                                                    Click="ToggleConfirmPw_Click">
+                                                    <TextBlock x:Name="EyeIconConfirm"
+                                                       Text="&#xE7B3;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="16"
+                                                       VerticalAlignment="Center"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
                                     </StackPanel>
 
                                     <Button Content="Update Password"

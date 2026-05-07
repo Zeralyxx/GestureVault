@@ -45,14 +45,14 @@ namespace GestureVault
                 NewPasswordTextBox.Text = NewPasswordBox.Password;
                 NewPasswordTextBox.Visibility = Visibility.Visible;
                 NewPasswordBox.Visibility = Visibility.Collapsed;
-                EyeIcon1.Text = "🙈";
+                EyeIcon1.Text = "\uED1A";
             }
             else
             {
                 NewPasswordBox.Password = NewPasswordTextBox.Text;
                 NewPasswordBox.Visibility = Visibility.Visible;
                 NewPasswordTextBox.Visibility = Visibility.Collapsed;
-                EyeIcon1.Text = "👁";
+                EyeIcon1.Text = "\uE7B3";
             }
         }
 
@@ -64,14 +64,14 @@ namespace GestureVault
                 ConfirmPasswordTextBox.Text = ConfirmPasswordBox.Password;
                 ConfirmPasswordTextBox.Visibility = Visibility.Visible;
                 ConfirmPasswordBox.Visibility = Visibility.Collapsed;
-                EyeIcon2.Text = "🙈";
+                EyeIcon2.Text = "\uED1A";
             }
             else
             {
                 ConfirmPasswordBox.Password = ConfirmPasswordTextBox.Text;
                 ConfirmPasswordBox.Visibility = Visibility.Visible;
                 ConfirmPasswordTextBox.Visibility = Visibility.Collapsed;
-                EyeIcon2.Text = "👁";
+                EyeIcon2.Text = "\uE7B3";
             }
         }
 

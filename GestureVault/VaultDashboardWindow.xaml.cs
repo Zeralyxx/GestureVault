@@ -29,6 +29,10 @@ namespace GestureVault
         private string _searchQuery = string.Empty;
         private VaultItem? _selectedItem = null;
 
+        private bool _currentPwVisible = false;
+        private bool _newPwVisible = false;
+        private bool _confirmPwVisible = false;
+
         // Tracks temp files open so we can clean them on lock
         private readonly List<string> _openTempFiles = new();
 
@@ -808,7 +812,7 @@ namespace GestureVault
             {
                 Title = "Delete item",
                 Content = $"Permanently delete \"{_selectedItem.Title}\"? " +
-                                    $"All attached files will be securely erased.",
+                            $"All attached files will be securely erased.",
                 PrimaryButtonText = "Delete",
                 CloseButtonText = "Cancel",
                 XamlRoot = this.Content.XamlRoot
@@ -816,9 +820,9 @@ namespace GestureVault
 
             if (await confirm.ShowAsync() == ContentDialogResult.Primary)
             {
-                // Delete encrypted files from disk if document
-                if (_selectedItem.Type == VaultItemType.Document)
-                    _storage.DeleteItemFolder(_selectedItem.Id);
+                // Use VaultStorageService.DeleteItem which handles removing
+                // associated encrypted files and metadata.
+                _storage.DeleteItem(_selectedItem);
 
                 _allItems.Remove(_selectedItem);
                 SaveItems();
@@ -918,12 +922,66 @@ namespace GestureVault
         private void CloseSettingsButton_Click(object s, RoutedEventArgs e) =>
             SettingsOverlay.Visibility = Visibility.Collapsed;
 
+        private void ToggleCurrentPw_Click(object sender, RoutedEventArgs e)
+        {
+            _currentPwVisible = !_currentPwVisible;
+            if (_currentPwVisible)
+            {
+                CurrentPasswordTextBox.Text = CurrentPasswordBox.Password;
+                CurrentPasswordTextBox.Visibility = Visibility.Visible;
+                CurrentPasswordBox.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                CurrentPasswordBox.Password = CurrentPasswordTextBox.Text;
+                CurrentPasswordBox.Visibility = Visibility.Visible;
+                CurrentPasswordTextBox.Visibility = Visibility.Collapsed;
+            }
+            EyeIconCurrent.Text = _currentPwVisible ? "\uED1A" : "\uE7B3";
+        }
+
+        private void ToggleNewPw_Click(object sender, RoutedEventArgs e)
+        {
+            _newPwVisible = !_newPwVisible;
+            if (_newPwVisible)
+            {
+                ChangeNewPasswordTextBox.Text = ChangeNewPasswordBox.Password;
+                ChangeNewPasswordTextBox.Visibility = Visibility.Visible;
+                ChangeNewPasswordBox.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                ChangeNewPasswordBox.Password = ChangeNewPasswordTextBox.Text;
+                ChangeNewPasswordBox.Visibility = Visibility.Visible;
+                ChangeNewPasswordTextBox.Visibility = Visibility.Collapsed;
+            }
+            EyeIconNew.Text = _newPwVisible ? "\uED1A" : "\uE7B3";
+        }
+
+        private void ToggleConfirmPw_Click(object sender, RoutedEventArgs e)
+        {
+            _confirmPwVisible = !_confirmPwVisible;
+            if (_confirmPwVisible)
+            {
+                ChangeConfirmPasswordTextBox.Text = ChangeConfirmPasswordBox.Password;
+                ChangeConfirmPasswordTextBox.Visibility = Visibility.Visible;
+                ChangeConfirmPasswordBox.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                ChangeConfirmPasswordBox.Password = ChangeConfirmPasswordTextBox.Text;
+                ChangeConfirmPasswordBox.Visibility = Visibility.Visible;
+                ChangeConfirmPasswordTextBox.Visibility = Visibility.Collapsed;
+            }
+            EyeIconConfirm.Text = _confirmPwVisible ? "\uED1A" : "\uE7B3";
+        }
+
         // ── Change password ───────────────────────────────────────────────────
         private async void ChangePasswordButton_Click(object s, RoutedEventArgs e)
         {
-            string current = CurrentPasswordBox.Password;
-            string newPw = ChangeNewPasswordBox.Password;
-            string confirm = ChangeConfirmPasswordBox.Password;
+            string current = _currentPwVisible ? CurrentPasswordTextBox.Text : CurrentPasswordBox.Password;
+            string newPw = _newPwVisible ? ChangeNewPasswordTextBox.Text : ChangeNewPasswordBox.Password;
+            string confirm = _confirmPwVisible ? ChangeConfirmPasswordTextBox.Text : ChangeConfirmPasswordBox.Password;
 
             if (string.IsNullOrWhiteSpace(current) ||
                 string.IsNullOrWhiteSpace(newPw) ||

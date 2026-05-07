@@ -163,10 +163,11 @@
                                                 Margin="0,0,12,0"
                                                 Background="Transparent" BorderThickness="0"
                                                 Click="ToggleNewPassword_Click">
-                                            <TextBlock x:Name="EyeIcon1" Text="👁"
-                                                       FontSize="18"
-                                                       VerticalAlignment="Center"
-                                                       HorizontalAlignment="Center"/>
+                                            <TextBlock x:Name="EyeIcon1"
+                                               Text="&#xE7B3;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="16"
+                                               VerticalAlignment="Center" />
                                         </Button>
                                     </Grid>
                                 </StackPanel>
@@ -208,10 +209,11 @@
                                                 Margin="0,0,12,0"
                                                 Background="Transparent" BorderThickness="0"
                                                 Click="ToggleConfirmPassword_Click">
-                                            <TextBlock x:Name="EyeIcon2" Text="👁"
-                                                       FontSize="18"
-                                                       VerticalAlignment="Center"
-                                                       HorizontalAlignment="Center"/>
+                                            <TextBlock x:Name="EyeIcon2"
+                                               Text="&#xE7B3;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="16"
+                                               VerticalAlignment="Center" />
                                         </Button>
                                     </Grid>
                                 </StackPanel>
