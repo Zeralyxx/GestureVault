@@ -97,10 +97,10 @@
                                 HorizontalAlignment="Stretch"
                                 Style="{StaticResource CardButtonStyle}"
                                 Click="FilterNotes_Click"/>
-                        <Button x:Name="FilterDocumentButton" Content="Documents"
+                        <Button x:Name="FilterFilesButton" Content="Files"
                                 HorizontalAlignment="Stretch"
                                 Style="{StaticResource CardButtonStyle}"
-                                Click="FilterDocuments_Click"/>
+                                Click="FilterFiles_Click"/>
 
                         <Border Height="1" Background="{ThemeResource CardBorderBrush}"
                                 Margin="0,8"/>
@@ -141,7 +141,7 @@
                                 <TextBlock x:Name="SectionTitle" Text="All Items"
                                            FontSize="28" FontWeight="SemiBold"
                                            Foreground="{ThemeResource PrimaryTextBrush}"/>
-                                <TextBlock Text="Manage your encrypted passwords, notes, and documents."
+                                <TextBlock Text="Manage your encrypted passwords, notes, and files."
                                            FontSize="14"
                                            Foreground="{ThemeResource SecondaryTextBrush}"/>
                             </StackPanel>
@@ -204,11 +204,12 @@
 
         <!-- ── Add Item Overlay ───────────────────────────────────────────── -->
         <Grid x:Name="AddItemOverlay" Visibility="Collapsed" Background="#99000000">
-            <Border Width="500" CornerRadius="28" Padding="28"
+            <Border Width="560" MaxHeight="820" CornerRadius="24" Padding="0"
                     Background="{ThemeResource CardBackgroundBrush}" BorderBrush="{ThemeResource CardBorderBrush}"
                     BorderThickness="1"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
-                <StackPanel Spacing="16">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="14" Padding="28">
                     <TextBlock Text="Add Vault Item" FontSize="26"
                                FontWeight="SemiBold" Foreground="{ThemeResource PrimaryTextBrush}"/>
 
@@ -219,7 +220,7 @@
                               SelectionChanged="ItemTypeCombo_SelectionChanged">
                         <ComboBoxItem Content="🔑  Password"/>
                         <ComboBoxItem Content="📝  Secure Note"/>
-                        <ComboBoxItem Content="📄  Document"/>
+                        <ComboBoxItem Content="📁  Files"/>
                     </ComboBox>
 
                     <!-- Title -->
@@ -249,11 +250,11 @@
                              CornerRadius="12"
                              Visibility="Collapsed"/>
 
-                    <!-- Document field (shown when type = Document) -->
-                    <StackPanel x:Name="DocumentFields" Spacing="8" Visibility="Collapsed">
+                    <!-- Files field (shown when type = Files) -->
+                    <StackPanel x:Name="FilesFields" Spacing="8" Visibility="Collapsed">
                         <TextBox x:Name="ItemDescriptionBox"
                             Header="Description"
-                            PlaceholderText="Brief description of this document"
+                            PlaceholderText="Brief description of these files"
                             CornerRadius="12"/>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -261,11 +262,11 @@
                                 <ColumnDefinition Width="8"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Content="+ Choose Files..."
+                            <Button Grid.Column="0" Content="+ Choose Files"
                                 HorizontalAlignment="Stretch"
                                 Style="{StaticResource CardButtonStyle}"
                                 Click="ChooseFileButton_Click"/>
-                            <Button Grid.Column="2" Content="📁 Choose Folder..."
+                            <Button Grid.Column="2" Content="📁 Choose Folder"
                                 HorizontalAlignment="Stretch"
                                 Style="{StaticResource CardButtonStyle}"
                                 Click="ChooseFolderButton_Click"/>
@@ -275,7 +276,7 @@
                             FontSize="13"
                             Foreground="{ThemeResource SecondaryTextBrush}"/>
                         <!-- Dynamically populated with pending file rows -->
-                        <StackPanel x:Name="PendingFilesList" Spacing="4"/>
+                        <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto"><StackPanel x:Name="PendingFilesList" Spacing="4"/></ScrollViewer>
                     </StackPanel>
 
                     <!-- Buttons -->
@@ -300,6 +301,7 @@
                                 Click="SaveItemButton_Click"/>
                     </Grid>
                 </StackPanel>
+                </ScrollViewer>
             </Border>
         </Grid>
 

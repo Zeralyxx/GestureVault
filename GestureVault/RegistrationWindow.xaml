@@ -341,14 +341,14 @@
                                 Foreground="{ThemeResource SecondaryTextBrush}"/>
                         </StackPanel>
 
-                        <Border CornerRadius="24" Padding="28"
+                        <Border CornerRadius="24" Padding="22"
                             Background="{ThemeResource CardBackgroundBrush}"
                             BorderBrush="{ThemeResource CardBorderBrush}"
                             BorderThickness="1">
                             <StackPanel Spacing="20">
 
                                 <!-- Camera preview area -->
-                                <Border Height="220" CornerRadius="18"
+                                <Border Height="180" CornerRadius="18"
                                     Background="#0F0F0F"
                                     BorderBrush="{ThemeResource AccentBrush}" 
                                     BorderThickness="2">
@@ -356,7 +356,7 @@
                                         <!-- Live camera feed -->
                                         <Image x:Name="RegistrationCameraPreview"
                                             Stretch="Uniform"
-                                            Height="220"/>
+                                            Height="180"/>
 
                                         <!-- Placeholder when camera is off -->
                                         <StackPanel x:Name="RegistrationCameraPlaceholder"

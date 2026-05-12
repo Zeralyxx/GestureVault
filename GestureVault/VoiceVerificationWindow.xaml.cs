@@ -59,7 +59,9 @@ namespace GestureVault
             {
                 VoiceStatusText.Text = "Not recognized";
                 VoiceInstructionText.Text = e.Reason;
-                DetectedPhraseText.Text = "Ready to try again.";
+                DetectedPhraseText.Text = string.IsNullOrWhiteSpace(e.HeardText)
+                    ? "Ready to try again."
+                    : e.HeardText;
 
                 // Re-enable button so user can retry
                 StartListeningButton.Content = "Try Again";

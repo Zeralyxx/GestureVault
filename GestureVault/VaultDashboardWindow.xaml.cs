@@ -5,10 +5,12 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using System.Linq;
 using System.Xml.Linq;
 using Windows.Storage;
@@ -112,7 +114,7 @@ namespace GestureVault
             {
                 VaultItemType.Password => "🔑",
                 VaultItemType.Note => "📝",
-                VaultItemType.Document => "📄",
+                VaultItemType.Document => "📁",
                 _ => "📦"
             };
 
@@ -123,7 +125,7 @@ namespace GestureVault
                 VaultItemType.Note =>
                     $"Secure Note • Updated {item.UpdatedAt}",
                 VaultItemType.Document =>
-                    $"Document • {item.Files.Count} file(s) • {item.UpdatedAt}",
+                    $"Files • {item.Files.Count} file(s) • {item.UpdatedAt}",
                 _ => item.UpdatedAt
             };
 
@@ -217,7 +219,7 @@ namespace GestureVault
             {
                 case 0: ShowPasswordFields(); break;
                 case 1: ShowNoteFields(); break;
-                case 2: ShowDocumentFields(); break;
+                case 2: ShowFilesFields(); break;
             }
         }
 
@@ -225,19 +227,19 @@ namespace GestureVault
         {
             PasswordFields.Visibility = Visibility.Visible;
             NoteContentBox.Visibility = Visibility.Collapsed;
-            DocumentFields.Visibility = Visibility.Collapsed;
+            FilesFields.Visibility = Visibility.Collapsed;
         }
         private void ShowNoteFields()
         {
             PasswordFields.Visibility = Visibility.Collapsed;
             NoteContentBox.Visibility = Visibility.Visible;
-            DocumentFields.Visibility = Visibility.Collapsed;
+            FilesFields.Visibility = Visibility.Collapsed;
         }
-        private void ShowDocumentFields()
+        private void ShowFilesFields()
         {
             PasswordFields.Visibility = Visibility.Collapsed;
             NoteContentBox.Visibility = Visibility.Collapsed;
-            DocumentFields.Visibility = Visibility.Visible;
+            FilesFields.Visibility = Visibility.Visible;
         }
 
         private async void ChooseFileButton_Click(object sender, RoutedEventArgs e)
@@ -299,7 +301,7 @@ namespace GestureVault
         /// Recursively collects every file under a directory.
         /// Returns a list of (fullPath, displayName) where displayName
         /// preserves the relative sub-path so the user can see folder structure.
-        /// e.g. "Documents\Tax2024\receipt.pdf"
+        /// e.g. "Files\Tax2024\receipt.pdf"
         /// </summary>
         private static List<(string path, string name)> GetAllFilesInFolder(
             string rootPath)
@@ -408,12 +410,17 @@ namespace GestureVault
                     item.Type = VaultItemType.Document;
                     item.Description = ItemDescriptionBox.Text.Trim();
 
-                    // Encrypt and copy each pending file into the vault
-                    foreach (var (sourcePath, _) in _pendingFiles)
+                    if (_pendingFiles.Count == 0)
+                    {
+                        await ShowDialog("No files selected", "Choose at least one file to add to this vault item.");
+                        return;
+                    }
+
+                    foreach (var (sourcePath, displayName) in _pendingFiles)
                     {
                         try
                         {
-                            var vf = _storage.AddFileToItem(item.Id, sourcePath);
+                            var vf = ImportFileIntoVault(item, sourcePath, displayName);
                             item.Files.Add(vf);
                         }
                         catch (Exception ex)
@@ -451,7 +458,7 @@ namespace GestureVault
             {
                 VaultItemType.Password => "🔑 Password",
                 VaultItemType.Note => "📝 Secure Note",
-                VaultItemType.Document => "📄 Document",
+                VaultItemType.Document => "📁 Files",
                 _ => "Item"
             };
 
@@ -473,7 +480,7 @@ namespace GestureVault
 
                 case VaultItemType.Document:
                     AddViewRow("Description", item.Description ?? "—");
-                    BuildDocumentFileList(item);
+                    BuildFilesFileList(item);
                     break;
             }
 
@@ -482,8 +489,8 @@ namespace GestureVault
             ResetIdleTimer();
         }
 
-        // ── Document file list inside the view overlay ────────────────────────
-        private void BuildDocumentFileList(VaultItem item)
+        // ── Files file list inside the view overlay ────────────────────────
+        private void BuildFilesFileList(VaultItem item)
         {
             // Section header + Add Files button
             var headerGrid = new Grid();
@@ -523,6 +530,8 @@ namespace GestureVault
                 Margin = new Thickness(0, 0, 0, 4)
             });
 
+            AddImagePreviewStrip(item);
+
             if (item.Files.Count == 0)
             {
                 ViewItemContent.Children.Add(new TextBlock
@@ -543,15 +552,16 @@ namespace GestureVault
 
         private Border BuildFileRow(VaultItem item, VaultFile vf)
         {
-            var grid = new Grid();
-            grid.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = GridLength.Auto });
+            var grid = new Grid { ColumnSpacing = 12 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            var namePanel = new StackPanel();
+            var preview = BuildFilePreview(vf, 56, 42);
+            Grid.SetColumn(preview, 0);
+
+            var namePanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             namePanel.Children.Add(new TextBlock
             {
                 Text = vf.FileName,
@@ -562,51 +572,34 @@ namespace GestureVault
             });
             namePanel.Children.Add(new TextBlock
             {
-                Text = $"Added {vf.AddedAt}  •  🔒 encrypted",
+                Text = $"Added {vf.AddedAt}  �  encrypted",
                 FontSize = 11,
                 Foreground = new SolidColorBrush(SecondaryText)
             });
-            Grid.SetColumn(namePanel, 0);
+            Grid.SetColumn(namePanel, 1);
 
-            // Open button — decrypts to temp and launches with default app
             var openBtn = new Button
             {
                 Content = "Open",
                 Width = 64,
                 Height = 32,
-                Margin = new Thickness(8, 0, 6, 0),
-                Style = (Style)((FrameworkElement)this.Content)
-                              .Resources["CardButtonStyle"]
+                Style = (Style)((FrameworkElement)this.Content).Resources["CardButtonStyle"]
             };
             openBtn.Click += async (s, e) =>
             {
-                try
-                {
-                    string tempPath = _storage.DecryptFileToTemp(vf);
-                    _openTempFiles.Add(tempPath);
-                    // Launch with default system app
-                    var launchFile = await StorageFile.GetFileFromPathAsync(tempPath);
-                    await Windows.System.Launcher.LaunchFileAsync(launchFile);
-                }
-                catch (Exception ex)
-                {
-                    await ShowDialog("Open failed",
-                        $"Could not open file: {ex.Message}");
-                }
+                await OpenVaultFileAsync(vf);
                 ResetIdleTimer();
             };
-            Grid.SetColumn(openBtn, 1);
+            Grid.SetColumn(openBtn, 2);
 
-            // Delete button — removes from vault
             var delBtn = new Button
             {
-                Content = "🗑",
+                Content = "??",
                 Width = 36,
                 Height = 32,
                 Background = new SolidColorBrush(Colors.Transparent),
                 BorderThickness = new Thickness(0),
-                Foreground = new SolidColorBrush(
-                    Color.FromArgb(255, 229, 57, 53))
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 229, 57, 53))
             };
             delBtn.Click += async (s, e) =>
             {
@@ -625,13 +618,13 @@ namespace GestureVault
                     item.UpdatedAt = DateTime.Now.ToString("MMM dd, yyyy");
                     SaveItems();
                     RefreshDisplay();
-                    // Refresh the view overlay with updated file list
                     OpenItem(item);
                 }
                 ResetIdleTimer();
             };
-            Grid.SetColumn(delBtn, 2);
+            Grid.SetColumn(delBtn, 3);
 
+            grid.Children.Add(preview);
             grid.Children.Add(namePanel);
             grid.Children.Add(openBtn);
             grid.Children.Add(delBtn);
@@ -648,7 +641,7 @@ namespace GestureVault
             };
         }
 
-        // ── Add more files to an existing document item ───────────────────────
+        // -- Add more files to an existing file item --------------------------- ───────────────────────
         private async void AddFilesToExistingItem(VaultItem item)
         {
             // Ask whether to add files or a folder
@@ -656,7 +649,7 @@ namespace GestureVault
             {
                 Title = "Add to vault item",
                 Content = "Would you like to add individual files or an entire folder?",
-                PrimaryButtonText = "📄 Files",
+                PrimaryButtonText = "📁 Files",
                 SecondaryButtonText = "📁 Folder",
                 CloseButtonText = "Cancel",
                 XamlRoot = this.Content.XamlRoot
@@ -711,9 +704,7 @@ namespace GestureVault
             {
                 try
                 {
-                    var vf = _storage.AddFileToItem(item.Id, path);
-                    // Override stored display name with relative path for folders
-                    vf.FileName = name;
+                    var vf = ImportFileIntoVault(item, path, name);
                     item.Files.Add(vf);
                 }
                 catch (Exception ex)
@@ -730,6 +721,145 @@ namespace GestureVault
             ResetIdleTimer();
         }
 
+        private VaultFile ImportFileIntoVault(VaultItem item, string sourcePath, string? displayName = null)
+        {
+            var vf = _storage.AddFileToItem(item.Id, sourcePath);
+            if (!string.IsNullOrWhiteSpace(displayName))
+                vf.FileName = displayName;
+
+            TryRemoveOriginalFile(sourcePath);
+            return vf;
+        }
+
+        private static void TryRemoveOriginalFile(string sourcePath)
+        {
+            try
+            {
+                if (!File.Exists(sourcePath)) return;
+                EncryptionService.SecureDeleteTemp(sourcePath);
+            }
+            catch
+            {
+                // Best effort: the file may be locked or protected.
+            }
+        }
+
+        private async Task OpenVaultFileAsync(VaultFile vf)
+        {
+            try
+            {
+                string tempPath = _storage.DecryptFileToTemp(vf);
+                _openTempFiles.Add(tempPath);
+                var launchFile = await StorageFile.GetFileFromPathAsync(tempPath);
+                await Windows.System.Launcher.LaunchFileAsync(launchFile);
+            }
+            catch (Exception ex)
+            {
+                await ShowDialog("Open failed", $"Could not open file: {ex.Message}");
+            }
+        }
+
+        private void AddImagePreviewStrip(VaultItem item)
+        {
+            var imageFiles = item.Files.Where(f => IsImageFile(f.FileName)).Take(12).ToList();
+            if (imageFiles.Count == 0) return;
+
+            var strip = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 0, 8) };
+            strip.Children.Add(new TextBlock
+            {
+                Text = "Image preview",
+                FontSize = 13,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(SecondaryText)
+            });
+
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+            foreach (var file in imageFiles)
+            {
+                var thumb = BuildFilePreview(file, 92, 68);
+                thumb.PointerPressed += async (s, e) => await OpenVaultFileAsync(file);
+                ToolTipService.SetToolTip(thumb, file.FileName);
+                row.Children.Add(thumb);
+            }
+
+            strip.Children.Add(new ScrollViewer
+            {
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Content = row
+            });
+
+            ViewItemContent.Children.Add(strip);
+        }
+
+        private FrameworkElement BuildFilePreview(VaultFile vf, double width, double height)
+        {
+            if (IsImageFile(vf.FileName))
+            {
+                try
+                {
+                    string tempPath = _storage.DecryptFileToTemp(vf);
+                    _openTempFiles.Add(tempPath);
+                    return new Border
+                    {
+                        Width = width,
+                        Height = height,
+                        CornerRadius = new CornerRadius(10),
+                        Background = new SolidColorBrush(Color.FromArgb(255, 239, 246, 255)),
+                        BorderBrush = new SolidColorBrush(CardBorder),
+                        BorderThickness = new Thickness(1),
+                        Child = new Image
+                        {
+                            Source = new BitmapImage(new Uri(tempPath)),
+                            Stretch = Stretch.UniformToFill
+                        }
+                    };
+                }
+                catch
+                {
+                    // Fall through to icon preview.
+                }
+            }
+
+            return new Border
+            {
+                Width = width,
+                Height = height,
+                CornerRadius = new CornerRadius(10),
+                Background = new SolidColorBrush(Color.FromArgb(255, 239, 246, 255)),
+                BorderBrush = new SolidColorBrush(CardBorder),
+                BorderThickness = new Thickness(1),
+                Child = new TextBlock
+                {
+                    Text = GetFileGlyph(vf.FileName),
+                    FontSize = width > 70 ? 30 : 22,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+        }
+
+        private static bool IsImageFile(string fileName)
+        {
+            string ext = Path.GetExtension(fileName).ToLowerInvariant();
+            return ext is ".jpg" or ".jpeg" or ".png" or ".bmp" or ".gif" or ".webp";
+        }
+
+        private static string GetFileGlyph(string fileName)
+        {
+            string ext = Path.GetExtension(fileName).ToLowerInvariant();
+            return ext switch
+            {
+                ".pdf" => "??",
+                ".doc" or ".docx" => "??",
+                ".xls" or ".xlsx" => "??",
+                ".ppt" or ".pptx" => "??",
+                ".zip" or ".rar" or ".7z" => "??",
+                ".mp4" or ".mov" or ".avi" => "??",
+                ".mp3" or ".wav" => "??",
+                _ => "??"
+            };
+        }
         private void AddViewRow(string label, string value,
                                  bool isPassword = false)
         {
@@ -754,7 +884,7 @@ namespace GestureVault
 
                 var pwText = new TextBlock
                 {
-                    Text = new string('•', value.Length),
+                    Text = new string('\u2022', value.Length),
                     FontSize = 15,
                     VerticalAlignment = VerticalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
@@ -774,7 +904,7 @@ namespace GestureVault
                 revealBtn.Click += (s, e) =>
                 {
                     revealed = !revealed;
-                    pwText.Text = revealed ? value : new string('•', value.Length);
+                    pwText.Text = revealed ? value : new string('\u2022', value.Length);
                     revealBtn.Content = revealed ? "🙈" : "👁";
                 };
                 Grid.SetColumn(revealBtn, 1);
@@ -847,7 +977,7 @@ namespace GestureVault
 
             if (await confirm.ShowAsync() == ContentDialogResult.Primary)
             {
-                // Delete encrypted files from disk if document
+                // Delete encrypted files from disk if file
                 if (_selectedItem.Type == VaultItemType.Document)
                     _storage.DeleteItem(_selectedItem);
 
@@ -886,7 +1016,7 @@ namespace GestureVault
                 (Style)((FrameworkElement)this.Content).Resources[
                     filter == VaultItemType.Note
                         ? "PrimaryButtonStyle" : "CardButtonStyle"];
-            FilterDocumentButton.Style =
+            FilterFilesButton.Style =
                 (Style)((FrameworkElement)this.Content).Resources[
                     filter == VaultItemType.Document
                         ? "PrimaryButtonStyle" : "CardButtonStyle"];
@@ -901,8 +1031,8 @@ namespace GestureVault
             SetFilter(VaultItemType.Password, "Passwords");
         private void FilterNotes_Click(object s, RoutedEventArgs e) =>
             SetFilter(VaultItemType.Note, "Secure Notes");
-        private void FilterDocuments_Click(object s, RoutedEventArgs e) =>
-            SetFilter(VaultItemType.Document, "Documents");
+        private void FilterFiles_Click(object s, RoutedEventArgs e) =>
+            SetFilter(VaultItemType.Document, "Files");
 
         private void SearchBox_TextChanged(object s, TextChangedEventArgs e)
         {

@@ -13,23 +13,23 @@
 
         <Grid.Resources>
             <Style x:Key="PrimaryActionButtonStyle" TargetType="Button">
-                <Setter Property="Height" Value="56"/>
+                <Setter Property="Height" Value="48"/>
                 <Setter Property="HorizontalAlignment" Value="Stretch"/>
                 <Setter Property="Background" Value="{ThemeResource AccentBrush}"/>
                 <Setter Property="Foreground" Value="White"/>
-                <Setter Property="FontSize" Value="18"/>
+                <Setter Property="FontSize" Value="16"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
                 <Setter Property="CornerRadius" Value="16"/>
             </Style>
 
             <Style x:Key="SecondaryActionButtonStyle" TargetType="Button">
-                <Setter Property="Height" Value="54"/>
+                <Setter Property="Height" Value="46"/>
                 <Setter Property="HorizontalAlignment" Value="Stretch"/>
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="BorderBrush" Value="{ThemeResource MutedButtonBorderBrush}"/>
                 <Setter Property="Foreground" Value="{ThemeResource MutedButtonForegroundBrush}"/>
                 <Setter Property="BorderThickness" Value="2"/>
-                <Setter Property="FontSize" Value="17"/>
+                <Setter Property="FontSize" Value="15"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
                 <Setter Property="CornerRadius" Value="16"/>
             </Style>
@@ -38,17 +38,17 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
 
-            <Grid Padding="24,28,24,32">
+            <Grid Padding="20,18,20,24">
                 <StackPanel x:Name="ContentStack"
                         HorizontalAlignment="Center"
-                        Width="440"
-                        MaxWidth="440"
-                        Spacing="22">
+                        Width="500"
+                        MaxWidth="500"
+                        Spacing="12">
 
                     <!-- Branding -->
                     <StackPanel HorizontalAlignment="Center" Spacing="8">
-                        <Border Width="60"
-                                Height="60"
+                        <Border Width="46"
+                                Height="46"
                                 CornerRadius="18"
                                 Background="{ThemeResource AccentBrush}">
                             <Viewbox Margin="12">
@@ -58,13 +58,13 @@
                         </Border>
 
                         <TextBlock Text="GestureVault"
-                                   FontSize="42"
+                                   FontSize="34"
                                    FontWeight="SemiBold"
                                    TextAlignment="Center"
                                    Foreground="{ThemeResource PrimaryTextBrush}"/>
 
                         <TextBlock Text="Secure multi-modal digital vault"
-                                   FontSize="16"
+                                   FontSize="13"
                                    TextAlignment="Center"
                                    Foreground="{ThemeResource SecondaryTextBrush}"/>
                     </StackPanel>
@@ -72,14 +72,14 @@
                     <!-- Heading -->
                     <StackPanel HorizontalAlignment="Center" Spacing="6">
                         <TextBlock Text="Gesture Verification"
-                                   FontSize="46"
+                                   FontSize="34"
                                    FontWeight="SemiBold"
                                    TextAlignment="Center"
                                    TextWrapping="Wrap"
                                    Foreground="{ThemeResource PrimaryTextBrush}"/>
 
                         <TextBlock Text="Step 3 of 3 • Show your registered hand gesture"
-                                   FontSize="15"
+                                   FontSize="13"
                                    TextAlignment="Center"
                                    TextWrapping="Wrap"
                                    Foreground="{ThemeResource SecondaryTextBrush}"/>
@@ -90,13 +90,13 @@
                             Background="{ThemeResource CardBackgroundBrush}"
                             BorderBrush="{ThemeResource CardBorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="28"
-                            Padding="32">
+                            CornerRadius="22"
+                            Padding="22">
 
-                        <StackPanel Spacing="22">
+                        <StackPanel Spacing="12">
 
                             <!-- Camera Preview -->
-                            <Border Height="280"
+                            <Border Height="220"
                                 CornerRadius="22"
                                 Background="#EAF2FF"
                                 BorderBrush="{ThemeResource InputBorderBrush}"
@@ -105,7 +105,7 @@
                                     <!-- Actual camera feed -->
                                     <Image x:Name="CameraPreview"
                                         Stretch="Uniform"
-                                        Height="280"/>
+                                        Height="220"/>
 
                                     <!-- Overlay when camera is off -->
                                     <StackPanel x:Name="CameraPlaceholder"
@@ -113,12 +113,12 @@
                                         VerticalAlignment="Center"
                                         Spacing="10">
                                         <TextBlock Text="✋"
-                                            FontSize="64"
+                                            FontSize="46"
                                             TextAlignment="Center"/>
 
                                         <TextBlock x:Name="GestureStatusText"
                                             Text="Camera preview will appear here"
-                                            FontSize="20"
+                                            FontSize="16"
                                             FontWeight="SemiBold"
                                             TextAlignment="Center"
                                             Foreground="{ThemeResource PrimaryTextBrush}"/>
@@ -132,25 +132,25 @@
                                     <!-- Scan corner lines overlay -->
                                     <Border Width="46" Height="46"
                                         HorizontalAlignment="Left" VerticalAlignment="Top"
-                                        Margin="18"
+                                        Margin="14"
                                         BorderBrush="{ThemeResource AccentBrush}"
                                         BorderThickness="4,4,0,0"
                                         CornerRadius="8,0,0,0"/>
                                     <Border Width="46" Height="46"
                                         HorizontalAlignment="Right" VerticalAlignment="Top"
-                                        Margin="18"
+                                        Margin="14"
                                         BorderBrush="{ThemeResource AccentBrush}"
                                         BorderThickness="0,4,4,0"
                                         CornerRadius="0,8,0,0"/>
                                     <Border Width="46" Height="46"
                                         HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                                        Margin="18"
+                                        Margin="14"
                                         BorderBrush="{ThemeResource AccentBrush}"
                                         BorderThickness="4,0,0,4"
                                         CornerRadius="0,0,0,8"/>
                                     <Border Width="46" Height="46"
                                         HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                        Margin="18"
+                                        Margin="14"
                                         BorderBrush="{ThemeResource AccentBrush}"
                                         BorderThickness="0,0,4,4"
                                         CornerRadius="0,0,8,0"/>
@@ -171,7 +171,7 @@
 
                                     <TextBlock x:Name="DetectedGestureText"
                                                Text="Waiting for hand gesture..."
-                                               FontSize="16"
+                                               FontSize="13"
                                                TextWrapping="Wrap"
                                                Foreground="{ThemeResource PrimaryTextBrush}"/>
                                 </StackPanel>
@@ -183,7 +183,7 @@
                                     Click="StartCameraButton_Click"/>
 
                             <TextBlock Text="or"
-                                       FontSize="15"
+                                       FontSize="13"
                                        HorizontalAlignment="Center"
                                        Foreground="{ThemeResource SecondaryTextBrush}"/>
                             <Button x:Name="SkipButton"

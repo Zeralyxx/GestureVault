@@ -1,6 +1,7 @@
-﻿using Microsoft.UI.Dispatching;
+using Microsoft.UI.Dispatching;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Speech.Recognition;
 using System.Text.RegularExpressions;
@@ -17,30 +18,39 @@ namespace GestureVault.Services
     public class VerificationFailedEventArgs : EventArgs
     {
         public string Reason { get; }
-        public VerificationFailedEventArgs(string reason) => Reason = reason;
+        public string HeardText { get; }
+        public VerificationFailedEventArgs(string reason, string heardText = "")
+        {
+            Reason = reason;
+            HeardText = heardText;
+        }
     }
 
     public class VoiceService : IDisposable
     {
-        // ── Events ────────────────────────────────────────────────────────────
+        // -- Events ------------------------------------------------------------
         public event EventHandler<PassphraseVerifiedEventArgs>? PassphraseVerified;
         public event EventHandler<VerificationFailedEventArgs>? VerificationFailed;
 
-        // ── Internal ──────────────────────────────────────────────────────────
+        // -- Internal ----------------------------------------------------------
         private readonly SpeechRecognitionEngine _recognizer;
         private readonly DispatcherQueue _dispatcher;
-        private bool _disposed = false;
+private bool _disposed = false;
         private string _expectedPassphrase = string.Empty;
         private bool _passphraseLoaded = false;
+        private DispatcherQueueTimer? _listeningTimer;
+        private bool _isListening = false;
+        private string _lastHeardText = string.Empty;
+        private const int ListenWindowSeconds = 8;
 
         public VoiceService(DispatcherQueue dispatcher)
         {
             _dispatcher = dispatcher;
 
-            // ── Recognizer ────────────────────────────────────────────────────
-            _recognizer = new SpeechRecognitionEngine();
+            // -- Recognizer ----------------------------------------------------
+            _recognizer = CreateRecognizer();
             _recognizer.SetInputToDefaultAudioDevice();
-            _recognizer.BabbleTimeout = TimeSpan.FromSeconds(3);   // was Zero — tolerate noise before speech
+            _recognizer.BabbleTimeout = TimeSpan.FromSeconds(3);   // was Zero � tolerate noise before speech
             _recognizer.InitialSilenceTimeout = TimeSpan.FromSeconds(8);  // was 6
             _recognizer.EndSilenceTimeout = TimeSpan.FromSeconds(2);  // was 1.5
             _recognizer.EndSilenceTimeoutAmbiguous = TimeSpan.FromSeconds(1.8); // was 1.2
@@ -59,12 +69,26 @@ namespace GestureVault.Services
                 {
                     _dispatcher.TryEnqueue(() =>
                         VerificationFailed?.Invoke(this,
-                            new VerificationFailedEventArgs("No speech detected. Please try again.")));
+                            new VerificationFailedEventArgs("No speech detected. Please try again.", GetRecognizerDebugText())));
                 }
             };
         }
 
-        // ── Passphrase loading ────────────────────────────────────────────────
+
+        private static SpeechRecognitionEngine CreateRecognizer()
+        {
+            RecognizerInfo? englishRecognizer = SpeechRecognitionEngine
+                .InstalledRecognizers()
+                .FirstOrDefault(r => r.Culture.Name.Equals("en-US", StringComparison.OrdinalIgnoreCase))
+                ?? SpeechRecognitionEngine
+                    .InstalledRecognizers()
+                    .FirstOrDefault(r => r.Culture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase));
+
+            return englishRecognizer != null
+                ? new SpeechRecognitionEngine(englishRecognizer)
+                : new SpeechRecognitionEngine(CultureInfo.CurrentCulture);
+        }
+        // -- Passphrase loading ------------------------------------------------
         private void LoadExpectedPassphrase()
         {
             var settings = ApplicationData.Current.LocalSettings;
@@ -107,10 +131,12 @@ namespace GestureVault.Services
         private void ConfigureRecognitionGrammars()
         {
             _recognizer.UnloadAllGrammars();
-            _recognizer.LoadGrammar(new DictationGrammar());
 
             if (!_passphraseLoaded)
+            {
+                _recognizer.LoadGrammar(new DictationGrammar());
                 return;
+            }
 
             var choices = new Choices();
             foreach (string phrase in GetPassphraseVariants(_expectedPassphrase))
@@ -121,10 +147,11 @@ namespace GestureVault.Services
                 Culture = _recognizer.RecognizerInfo.Culture
             };
 
-            _recognizer.LoadGrammar(new Grammar(builder));
+            _recognizer.LoadGrammar(new Grammar(builder) { Name = "Registered passphrase", Weight = 1.0f });
+            _recognizer.LoadGrammar(new DictationGrammar { Name = "Dictation fallback", Weight = 0.2f });
         }
 
-        // ── Public API ────────────────────────────────────────────────────────
+        // -- Public API --------------------------------------------------------
         public void StartListening()
         {
             if (_disposed) return;
@@ -136,71 +163,105 @@ namespace GestureVault.Services
             {
                 _dispatcher.TryEnqueue(() =>
                     VerificationFailed?.Invoke(this,
-                        new VerificationFailedEventArgs("Voice passphrase could not be loaded. Please sign in again.")));
+                        new VerificationFailedEventArgs("Voice passphrase could not be loaded. Please sign in again.", GetRecognizerDebugText())));
                 return;
             }
 
+            _isListening = true;
+            _lastHeardText = string.Empty;
+            StartListeningTimer();
+
             try { _recognizer.RecognizeAsyncCancel(); } catch { }
-            try { _recognizer.RecognizeAsync(RecognizeMode.Single); }
+            try { _recognizer.RecognizeAsync(RecognizeMode.Multiple); }
             catch
             {
+                EndListening(cancelRecognizer: false);
                 _dispatcher.TryEnqueue(() =>
                     VerificationFailed?.Invoke(this,
-                        new VerificationFailedEventArgs("Could not start voice recognition. Please try again.")));
+                        new VerificationFailedEventArgs("Could not start voice recognition. Please try again.", GetRecognizerDebugText())));
             }
         }
 
         public void StopListening()
         {
             if (_disposed) return;
-            try
-            {
-                _recognizer.RecognizeAsyncCancel();
-            }
-            catch { }
+            EndListening(cancelRecognizer: true);
         }
 
+        private void StartListeningTimer()
+        {
+            _listeningTimer?.Stop();
+            _listeningTimer = _dispatcher.CreateTimer();
+            _listeningTimer.Interval = TimeSpan.FromSeconds(ListenWindowSeconds);
+            _listeningTimer.IsRepeating = false;
+            _listeningTimer.Tick += (_, _) =>
+            {
+                if (!_isListening || _disposed)
+                    return;
+
+                string detail = string.IsNullOrWhiteSpace(_lastHeardText)
+                    ? GetNoMatchStatusText()
+                    : _lastHeardText;
+
+                FireVerificationResult(false, "Passphrase was not recognized during the listening window. Please try again.", detail);
+            };
+            _listeningTimer.Start();
+        }
+
+        private void EndListening(bool cancelRecognizer)
+        {
+            _isListening = false;
+            _listeningTimer?.Stop();
+
+            if (cancelRecognizer)
+            {
+                try { _recognizer.RecognizeAsyncCancel(); } catch { }
+            }
+        }
         public void RefreshPassphrase() => LoadExpectedPassphrase();
 
-        // ── Recognition handlers ──────────────────────────────────────────────
+        // -- Recognition handlers ----------------------------------------------
         private void OnSpeechRecognized(object? sender, SpeechRecognizedEventArgs e)
         {
-            if (_disposed) return;
+            if (_disposed || !_isListening) return;
 
             string recognized = e.Result.Text.Trim();
             string matchedPhrase = FindMatchingRecognizedPhrase(e.Result);
 
-            // Reject very low-confidence results outright unless an alternate
-            // transcript matched the registered phrase.
-            if (e.Result.Confidence < 0.3f)
+            if (!string.IsNullOrWhiteSpace(recognized))
+                _lastHeardText = $"Speech heard. Confidence: {e.Result.Confidence:F2}";
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[Voice] Recognition: '{recognized}' confidence: {e.Result.Confidence:F2}");
+
+            if (!string.IsNullOrEmpty(matchedPhrase))
             {
+                FireVerificationResult(success: true, "Access granted.", matchedPhrase);
+            }
+        }
+
+        private void OnSpeechRejected(object? sender, SpeechRecognitionRejectedEventArgs e)
+        {
+            if (_disposed || !_isListening) return;
+
+            if (e.Result != null)
+            {
+                string matchedPhrase = FindMatchingRecognizedPhrase(e.Result);
                 if (!string.IsNullOrEmpty(matchedPhrase))
                 {
                     FireVerificationResult(success: true, "Access granted.", matchedPhrase);
                     return;
                 }
 
-                FireVerificationResult(success: false, "Could not hear you clearly. Please try again.", recognized);
-                return;
+                string heard = GetBestTranscript(e.Result);
+                if (!string.IsNullOrWhiteSpace(heard))
+                    _lastHeardText = "Speech heard, but it did not match yet.";
             }
-
-            System.Diagnostics.Debug.WriteLine(
-                $"[Voice] Recognition confidence: {e.Result.Confidence:F2}");
-
-            if (!string.IsNullOrEmpty(matchedPhrase))
-                FireVerificationResult(success: true, "Access granted.", matchedPhrase);
-            else
-                FireVerificationResult(success: false, "Phrase not recognized. Please try again.", recognized);
-        }
-
-        private void OnSpeechRejected(object? sender, SpeechRecognitionRejectedEventArgs e)
-        {
-            if (_disposed) return;
-            FireVerificationResult(success: false, "Could not hear you clearly. Please try again.", string.Empty);
         }
 
         private void FireVerificationResult(bool success, string message, string recognized)
         {
+            EndListening(cancelRecognizer: false);
             try { _recognizer.RecognizeAsyncCancel(); } catch { }
 
             _dispatcher.TryEnqueue(() =>
@@ -209,11 +270,11 @@ namespace GestureVault.Services
                 if (success)
                     PassphraseVerified?.Invoke(this, new PassphraseVerifiedEventArgs(string.Empty));
                 else
-                    VerificationFailed?.Invoke(this, new VerificationFailedEventArgs(message));
+                    VerificationFailed?.Invoke(this, new VerificationFailedEventArgs(message, recognized));
             });
         }
 
-        // ── Matching ──────────────────────────────────────────────────────────
+        // -- Matching ----------------------------------------------------------
         private bool IsMatch(string recognized)
         {
             if (!_passphraseLoaded || string.IsNullOrWhiteSpace(_expectedPassphrase)) return false;
@@ -224,7 +285,7 @@ namespace GestureVault.Services
             var expWords = norm1.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var recWords = norm2.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-            // Word count must be within ±1
+            // Word count must be within �1
             if (Math.Abs(expWords.Length - recWords.Length) > 2) return false;
 
             // Tier 1: exact normalized match
@@ -254,6 +315,32 @@ namespace GestureVault.Services
                 .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .FirstOrDefault(IsMatch) ?? string.Empty;
+        }
+
+
+        private static string GetBestTranscript(RecognitionResult result)
+        {
+            if (!string.IsNullOrWhiteSpace(result.Text))
+                return result.Text.Trim();
+
+            return result.Alternates
+                .Select(a => a.Text?.Trim() ?? string.Empty)
+                .FirstOrDefault(t => !string.IsNullOrWhiteSpace(t)) ?? string.Empty;
+        }
+
+        private string GetRecognizerDebugText()
+        {
+            string culture = _recognizer.RecognizerInfo.Culture.Name;
+            string phraseState = _passphraseLoaded
+                ? "Passphrase loaded"
+                : "Passphrase not loaded";
+
+            return $"{phraseState}. Recognizer: {_recognizer.RecognizerInfo.Name} ({culture})";
+        }
+
+        private string GetNoMatchStatusText()
+        {
+            return $"No matching speech was heard. {GetRecognizerDebugText()}";
         }
 
         private static bool PositionalMatch(string[] exp, string[] rec, double threshold)
@@ -390,7 +477,7 @@ namespace GestureVault.Services
             _ => '0'
         };
 
-        // ── Cleanup ───────────────────────────────────────────────────────────
+        // -- Cleanup -----------------------------------------------------------
         public void Dispose()
         {
             if (_disposed) return;
