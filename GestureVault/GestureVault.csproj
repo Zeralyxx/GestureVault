@@ -45,7 +45,8 @@
     <PackageReference Include="Microsoft.ML" Version="5.0.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1721" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260416003" />
-    <PackageReference Include="OpenCvSharp4" Version="4.13.0.20260427" />
+	<PackageReference Include="OpenCvSharp4" Version="4.13.0.20260302" />
+	<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260302" />
     <PackageReference Include="System.Speech" Version="10.0.7" />
   </ItemGroup>
   <ItemGroup>
@@ -84,5 +85,6 @@
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+	<OpenCvSharp4RuntimeAnyCPU>win</OpenCvSharp4RuntimeAnyCPU>
   </PropertyGroup>
 </Project>

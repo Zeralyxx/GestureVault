@@ -1,6 +1,7 @@
 using GestureVault.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
+using System;
 using Microsoft.UI.Xaml;
 
 namespace GestureVault
@@ -35,7 +36,7 @@ namespace GestureVault
             {
                 VoiceStatusText.Text = "Voice verified ✓";
                 VoiceInstructionText.Text = "Access granted.";
-                DetectedPhraseText.Text = $"\"{e.MatchedPhrase}\"";
+                DetectedPhraseText.Text = "Verified. Continuing...";
                 StartListeningButton.IsEnabled = false;
 
                 // Short delay so the user can read the success state
@@ -58,7 +59,7 @@ namespace GestureVault
             {
                 VoiceStatusText.Text = "Not recognized";
                 VoiceInstructionText.Text = e.Reason;
-                DetectedPhraseText.Text = "Phrase did not match. Try again.";
+                DetectedPhraseText.Text = "Ready to try again.";
 
                 // Re-enable button so user can retry
                 StartListeningButton.Content = "Try Again";
@@ -72,12 +73,13 @@ namespace GestureVault
             // Update UI to listening state
             VoiceStatusText.Text = "Listening...";
             VoiceInstructionText.Text = "Speak your passphrase now.";
-            DetectedPhraseText.Text = "Waiting for voice input...";
+            DetectedPhraseText.Text = "Listening for your passphrase.";
             StartListeningButton.IsEnabled = false;
             StartListeningButton.Content = "Listening...";
 
             _voiceService?.StartListening();
         }
+        
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {

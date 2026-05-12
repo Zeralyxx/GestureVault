@@ -95,69 +95,65 @@
 
                         <StackPanel Spacing="22">
 
-                            <!-- Camera Preview Placeholder -->
+                            <!-- Camera Preview -->
                             <Border Height="280"
-                                    CornerRadius="22"
-                                    Background="#EAF2FF"
-                                    BorderBrush="{ThemeResource InputBorderBrush}"
-                                    BorderThickness="2">
+                                CornerRadius="22"
+                                Background="#EAF2FF"
+                                BorderBrush="{ThemeResource InputBorderBrush}"
+                                BorderThickness="2">
                                 <Grid>
-                                    <StackPanel HorizontalAlignment="Center"
-                                                VerticalAlignment="Center"
-                                                Spacing="10">
+                                    <!-- Actual camera feed -->
+                                    <Image x:Name="CameraPreview"
+                                        Stretch="Uniform"
+                                        Height="280"/>
+
+                                    <!-- Overlay when camera is off -->
+                                    <StackPanel x:Name="CameraPlaceholder"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Spacing="10">
                                         <TextBlock Text="✋"
-                                                   FontSize="64"
-                                                   TextAlignment="Center"/>
+                                            FontSize="64"
+                                            TextAlignment="Center"/>
 
                                         <TextBlock x:Name="GestureStatusText"
-                                                   Text="Camera preview will appear here"
-                                                   FontSize="20"
-                                                   FontWeight="SemiBold"
-                                                   TextAlignment="Center"
-                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                            Text="Camera preview will appear here"
+                                            FontSize="20"
+                                            FontWeight="SemiBold"
+                                            TextAlignment="Center"
+                                            Foreground="{ThemeResource PrimaryTextBrush}"/>
 
                                         <TextBlock Text="Place your hand inside the frame"
-                                                   FontSize="14"
-                                                   TextAlignment="Center"
-                                                   Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                            FontSize="14"
+                                            TextAlignment="Center"
+                                            Foreground="{ThemeResource SecondaryTextBrush}"/>
                                     </StackPanel>
 
-                                    <!-- Fake scan corner lines -->
-                                    <Border Width="46"
-                                            Height="46"
-                                            HorizontalAlignment="Left"
-                                            VerticalAlignment="Top"
-                                            Margin="18"
-                                            BorderBrush="{ThemeResource AccentBrush}"
-                                            BorderThickness="4,4,0,0"
-                                            CornerRadius="8,0,0,0"/>
-
-                                    <Border Width="46"
-                                            Height="46"
-                                            HorizontalAlignment="Right"
-                                            VerticalAlignment="Top"
-                                            Margin="18"
-                                            BorderBrush="{ThemeResource AccentBrush}"
-                                            BorderThickness="0,4,4,0"
-                                            CornerRadius="0,8,0,0"/>
-
-                                    <Border Width="46"
-                                            Height="46"
-                                            HorizontalAlignment="Left"
-                                            VerticalAlignment="Bottom"
-                                            Margin="18"
-                                            BorderBrush="{ThemeResource AccentBrush}"
-                                            BorderThickness="4,0,0,4"
-                                            CornerRadius="0,0,0,8"/>
-
-                                    <Border Width="46"
-                                            Height="46"
-                                            HorizontalAlignment="Right"
-                                            VerticalAlignment="Bottom"
-                                            Margin="18"
-                                            BorderBrush="{ThemeResource AccentBrush}"
-                                            BorderThickness="0,0,4,4"
-                                            CornerRadius="0,0,8,0"/>
+                                    <!-- Scan corner lines overlay -->
+                                    <Border Width="46" Height="46"
+                                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                                        Margin="18"
+                                        BorderBrush="{ThemeResource AccentBrush}"
+                                        BorderThickness="4,4,0,0"
+                                        CornerRadius="8,0,0,0"/>
+                                    <Border Width="46" Height="46"
+                                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Margin="18"
+                                        BorderBrush="{ThemeResource AccentBrush}"
+                                        BorderThickness="0,4,4,0"
+                                        CornerRadius="0,8,0,0"/>
+                                    <Border Width="46" Height="46"
+                                        HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                        Margin="18"
+                                        BorderBrush="{ThemeResource AccentBrush}"
+                                        BorderThickness="4,0,0,4"
+                                        CornerRadius="0,0,0,8"/>
+                                    <Border Width="46" Height="46"
+                                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                        Margin="18"
+                                        BorderBrush="{ThemeResource AccentBrush}"
+                                        BorderThickness="0,0,4,4"
+                                        CornerRadius="0,0,8,0"/>
                                 </Grid>
                             </Border>
 
@@ -190,6 +186,10 @@
                                        FontSize="15"
                                        HorizontalAlignment="Center"
                                        Foreground="{ThemeResource SecondaryTextBrush}"/>
+                            <Button x:Name="SkipButton"
+                                    Content="Skip (Demo Mode)"
+                                    Style="{StaticResource SecondaryActionButtonStyle}"
+                                    Click="SkipButton_Click"/>
 
                             <Button x:Name="BackButton"
                                     Content="Back to Voice Step"

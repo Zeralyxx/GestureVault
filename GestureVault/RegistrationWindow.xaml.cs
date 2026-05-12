@@ -1,12 +1,11 @@
+using GestureVault.Services;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using System;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.RegularExpressions;
 using Windows.Storage;
 using Windows.UI;
 
@@ -17,6 +16,9 @@ namespace GestureVault
         // Tracks which password field is currently visible
         private bool _newPasswordVisible = false;
         private bool _confirmPasswordVisible = false;
+        private GestureService? _registrationGestureService;
+        private string _registeredGestureDirection = "SWIPE_RIGHT"; // default
+        private bool _gestureRecorded = false;
 
         public RegistrationWindow()
         {
@@ -82,41 +84,14 @@ namespace GestureVault
                 ? NewPasswordTextBox.Text
                 : NewPasswordBox.Password;
 
-            var (score, label, color) = ScorePassword(pw);
+            var strength = PasswordService.AssessStrength(pw);
 
-            StrengthLabel.Text = label;
-            StrengthLabel.Foreground = new SolidColorBrush(color);
+            StrengthLabel.Text = $"{strength.Label} ({strength.CrackTimeDescription})";
+            StrengthLabel.Foreground = new SolidColorBrush(ParseColor(strength.Color));
 
-            // Animate bar width relative to the card width (≈ 404px inner)
-            // Score 0-4 maps to 0%, 25%, 50%, 75%, 100%
-            double pct = score / 4.0;
-            // The bar's parent grid fills the card; we use a fixed 360px max
+            double pct = strength.Score / 10.0;
             StrengthBar.Width = pct * 360;
-            StrengthBar.Background = new SolidColorBrush(color);
-        }
-
-        private static (int score, string label, Color color) ScorePassword(string pw)
-        {
-            if (string.IsNullOrEmpty(pw))
-                return (0, "—", Color.FromArgb(255, 156, 163, 175));
-
-            int score = 0;
-            if (pw.Length >= 8) score++;
-            if (pw.Length >= 12) score++;
-            if (Regex.IsMatch(pw, @"[A-Z]") && Regex.IsMatch(pw, @"[a-z]")) score++;
-            if (Regex.IsMatch(pw, @"[0-9]")) score++;
-            if (Regex.IsMatch(pw, @"[^A-Za-z0-9]")) score++;
-
-            // Clamp to 4
-            score = Math.Min(score, 4);
-
-            return score switch
-            {
-                0 or 1 => (score, "Weak", Color.FromArgb(255, 239, 68, 68)),
-                2 => (score, "Fair", Color.FromArgb(255, 245, 158, 11)),
-                3 => (score, "Good", Color.FromArgb(255, 59, 130, 246)),
-                _ => (score, "Strong", Color.FromArgb(255, 34, 197, 94))
-            };
+            StrengthBar.Background = new SolidColorBrush(ParseColor(strength.Color));
         }
 
         // ── Step navigation ───────────────────────────────────────────────────
@@ -134,12 +109,20 @@ namespace GestureVault
                 await ShowDialog("Password required", "Please enter a master password.");
                 return;
             }
-            if (pw.Length < 8)
+
+            // Use new strength assessment
+            var strength = PasswordService.AssessStrength(pw);
+            if (strength.Strength <= PasswordService.PasswordStrength.Weak)
             {
-                await ShowDialog("Password too short",
-                    "Your master password must be at least 8 characters.");
+                string message = "Your password is too weak.\n\n";
+                if (strength.Suggestions.Count > 0)
+                {
+                    message += "Suggestions:\n• " + string.Join("\n• ", strength.Suggestions);
+                }
+                await ShowDialog("Weak Password", message);
                 return;
             }
+
             if (pw != confirm)
             {
                 await ShowDialog("Passwords don't match",
@@ -178,36 +161,32 @@ namespace GestureVault
 
         private void Step3Finish_Click(object sender, RoutedEventArgs e)
         {
+            // Stop camera if running
+            _registrationGestureService?.Stop();
+            _registrationGestureService?.Dispose();
+
             string pw = _newPasswordVisible
                 ? NewPasswordTextBox.Text
                 : NewPasswordBox.Password;
 
             var settings = ApplicationData.Current.LocalSettings;
 
-            // ── Persist master password hash ──────────────────────────────────────
-            settings.Values["MasterPasswordHash"] = HashPassword(pw);
+            // Save username
+            settings.Values["Username"] = "User";
 
-            // ── Persist voice passphrase — encrypted, not plaintext ───────────────
-            // VaultStorageService.SavePassphrase() derives the same AES-256-GCM key
-            // from the master password and stores only the ciphertext in LocalSettings
-            // under "RegisteredPassphraseEnc".  The old "RegisteredPassphrase"
-            // plaintext key is never written.
-            var storage = new GestureVault.Services.VaultStorageService();
-            storage.UnlockWithPassword(pw);                      // sets the key material
-            storage.SavePassphrase(PassphraseBox.Text.Trim());   // encrypts + stores
-            storage.Lock();                                       // clears key from RAM
+            // Store password with secure hashing
+            settings.Values["MasterPasswordHash"] = PasswordService.HashPassword(pw);
 
-            // ── Gesture: saved as placeholder ─────────────────────────────────────
-            settings.Values["RegisteredGesture"] = GestureCombo.SelectedIndex switch
-            {
-                0 => "SWIPE_RIGHT",
-                1 => "SWIPE_LEFT",
-                2 => "SWIPE_UP",
-                3 => "SWIPE_DOWN",
-                _ => "SWIPE_RIGHT"
-            };
+            // Persist voice passphrase — encrypted
+            var storage = new VaultStorageService();
+            storage.UnlockWithPassword(pw);
+            storage.SavePassphrase(PassphraseBox.Text.Trim());
+            storage.Lock();
 
-            // Mark registration complete so App skips this window next launch
+            // ── Gesture: save the ACTUALLY detected gesture ─────────────────────────
+            settings.Values["RegisteredGesture"] = _registeredGestureDirection;
+
+            // Mark registration complete
             settings.Values["RegistrationComplete"] = true;
 
             var mainWindow = new MainWindow();
@@ -222,8 +201,27 @@ namespace GestureVault
             Step2Panel.Visibility = step == 2 ? Visibility.Visible : Visibility.Collapsed;
             Step3Panel.Visibility = step == 3 ? Visibility.Visible : Visibility.Collapsed;
 
-            // Update step dots
-            SetDotActive(Step1Dot, Step2DotText, step >= 1);
+            // Initialize gesture service when entering step 3
+            if (step == 3)
+            {
+                _gestureRecorded = false;
+                GestureRecordedBadge.Visibility = Visibility.Collapsed;
+                RegistrationDetectedGesture.Text = "No gesture detected yet";
+                RegistrationCameraStatus.Text = "Click 'Start Camera' to begin";
+                RegistrationCameraPlaceholder.Visibility = Visibility.Visible;
+                RegistrationCameraPreview.Source = null;
+                StartRegistrationCameraButton.Content = "📷 Start Camera";
+                FinishSetupButton.IsEnabled = false;
+            }
+            else
+            {
+                // Stop camera when leaving step 3
+                _registrationGestureService?.Stop();
+                _registrationGestureService?.Dispose();
+                _registrationGestureService = null;
+            }
+
+            SetDotActive(Step1Dot, Step1DotText, step >= 1);
             SetDotActive(Step2Dot, Step2DotText, step >= 2);
             SetDotActive(Step3Dot, Step3DotText, step >= 3);
         }
@@ -238,11 +236,129 @@ namespace GestureVault
                 : new SolidColorBrush(Color.FromArgb(255, 102, 112, 133));
         }
 
-        // ── Helpers ───────────────────────────────────────────────────────────
-        private static string HashPassword(string password)
+        // Add this method to initialize gesture service when entering Step 3:
+        private void InitializeRegistrationGesture()
         {
-            byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
-            return Convert.ToHexString(bytes);
+            _registrationGestureService = new GestureService(DispatcherQueue.GetForCurrentThread());
+
+            // Frame preview
+            _registrationGestureService.FrameReady += async (s, frame) =>
+            {
+                try
+                {
+                    var bitmapSource = await ImageConverter.MatToSoftwareBitmapSource(frame);
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        RegistrationCameraPreview.Source = bitmapSource;
+                    });
+                }
+                catch { /* Skip bad frames */ }
+            };
+
+            // Gesture detected
+            _registrationGestureService.GestureDetected += (s, e) =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    string gestureEmoji = e.Direction switch
+                    {
+                        "SWIPE_RIGHT" => "👋 Swipe Right",
+                        "SWIPE_LEFT" => "👈 Swipe Left",
+                        "SWIPE_UP" => "👆 Swipe Up",
+                        "SWIPE_DOWN" => "👇 Swipe Down",
+                        _ => e.Direction
+                    };
+
+                    RegistrationDetectedGesture.Text = gestureEmoji;
+                    RegistrationGestureInstruction.Text = "Gesture detected! Click 'Stop Camera' to lock it in.";
+
+                    // Store the direction
+                    _registeredGestureDirection = e.Direction;
+                    _gestureRecorded = true;
+
+                    // Show success badge
+                    GestureRecordedBadge.Visibility = Visibility.Visible;
+                    RecordedGestureText.Text = $"Registered: {gestureEmoji}";
+
+                    // Enable finish button
+                    FinishSetupButton.IsEnabled = true;
+                });
+            };
+        }
+
+        // Camera button handler for registration:
+        private void StartRegistrationCamera_Click(object sender, RoutedEventArgs e)
+        {
+            if (_registrationGestureService == null)
+                InitializeRegistrationGesture();
+
+            if (!_registrationGestureService!.IsRunning)
+            {
+                try
+                {
+                    _registrationGestureService.Start();
+                    RegistrationCameraPlaceholder.Visibility = Visibility.Collapsed;
+                    RegistrationCameraStatus.Text = "Camera active - perform your swipe now";
+                    StartRegistrationCameraButton.Content = "⏹ Stop Camera";
+                }
+                catch (Exception ex)
+                {
+                    RegistrationCameraStatus.Text = $"Camera error: {ex.Message}";
+                }
+            }
+            else
+            {
+                _registrationGestureService.Stop();
+                RegistrationCameraPlaceholder.Visibility = Visibility.Visible;
+
+                if (_gestureRecorded)
+                {
+                    RegistrationCameraStatus.Text = "✓ Gesture recorded";
+                }
+                else
+                {
+                    RegistrationCameraStatus.Text = "No gesture detected. Try again.";
+                }
+
+                StartRegistrationCameraButton.Content = "📷 Start Camera";
+            }
+        }
+
+        //DEMO TEST
+
+        private void SkipGesture_Click(object sender, RoutedEventArgs e)
+        {
+            // Stop camera if running
+            _registrationGestureService?.Stop();
+            _registrationGestureService?.Dispose();
+
+            // Use default gesture
+            _registeredGestureDirection = "SWIPE_RIGHT";
+            _gestureRecorded = true;
+
+            // Enable finish button
+            FinishSetupButton.IsEnabled = true;
+
+            // Update UI
+            RegistrationDetectedGesture.Text = "⏭ Skipped (Demo)";
+            GestureRecordedBadge.Visibility = Visibility.Visible;
+            RecordedGestureText.Text = "Registered: 👋 Swipe Right (default)";
+            RegistrationCameraStatus.Text = "✓ Gesture set to default";
+        }
+    
+
+        // ── Helpers ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Parses a hex color string like "#EF4444" or "EF4444" to Windows.UI.Color.
+        /// </summary>
+        private static Color ParseColor(string hex)
+        {
+            hex = hex.TrimStart('#');
+            return Color.FromArgb(255,
+                byte.Parse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber),
+                byte.Parse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber),
+                byte.Parse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber));
         }
 
         private async System.Threading.Tasks.Task ShowDialog(string title, string message)
@@ -257,4 +373,7 @@ namespace GestureVault
             await dialog.ShowAsync();
         }
     }
+
+   
+
 }

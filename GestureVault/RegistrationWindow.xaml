@@ -71,12 +71,12 @@
 
                         <!-- Step 1 dot -->
                         <Border x:Name="Step1Dot" Grid.Column="0"
-                                Width="36" Height="36" CornerRadius="18"
-                                Background="{ThemeResource AccentBrush}">
-                            <TextBlock Text="1" FontSize="15" FontWeight="SemiBold"
-                                       Foreground="White"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
+                            Width="36" Height="36" CornerRadius="18"
+                            Background="{ThemeResource AccentBrush}">
+                            <TextBlock x:Name="Step1DotText" Text="1" FontSize="15" FontWeight="SemiBold"
+                                Foreground="White"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
                         </Border>
                         <!-- Connector -->
                         <Border Grid.Column="1" Height="2" VerticalAlignment="Center"
@@ -96,13 +96,13 @@
                                 Background="{ThemeResource CardBorderBrush}"/>
                         <!-- Step 3 dot -->
                         <Border x:Name="Step3Dot" Grid.Column="4"
-                                Width="36" Height="36" CornerRadius="18"
-                                Background="{ThemeResource CardBorderBrush}">
+                            Width="36" Height="36" CornerRadius="18"
+                            Background="{ThemeResource CardBorderBrush}">
                             <TextBlock x:Name="Step3DotText" Text="3"
-                                       FontSize="15" FontWeight="SemiBold"
-                                       Foreground="{ThemeResource SecondaryTextBrush}"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
+                                FontSize="15" FontWeight="SemiBold"
+                                Foreground="{ThemeResource SecondaryTextBrush}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
                         </Border>
                     </Grid>
 
@@ -327,67 +327,129 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- ══════════════════════════════════════════════════════
-                         STEP 3 — Gesture
-                    ══════════════════════════════════════════════════════ -->
+                    <!-- ══════════════════════════════════════════════════════════
+                              STEP 3 — Gesture
+                         ══════════════════════════════════════════════════════════ -->
                     <StackPanel x:Name="Step3Panel" Spacing="22" Visibility="Collapsed">
 
                         <StackPanel Spacing="4">
                             <TextBlock Text="Step 3 of 3 — Hand Gesture"
-                                       FontSize="22" FontWeight="SemiBold"
-                                       Foreground="{ThemeResource PrimaryTextBrush}"/>
-                            <TextBlock Text="Register a swipe gesture that the camera will recognise each time you unlock the vault."
-                                       FontSize="14" TextWrapping="Wrap"
-                                       Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                FontSize="22" FontWeight="SemiBold"
+                                Foreground="{ThemeResource PrimaryTextBrush}"/>
+                            <TextBlock Text="Perform a swipe gesture in front of your camera to register it."
+                                FontSize="14" TextWrapping="Wrap"
+                                Foreground="{ThemeResource SecondaryTextBrush}"/>
                         </StackPanel>
 
                         <Border CornerRadius="24" Padding="28"
-                                Background="{ThemeResource CardBackgroundBrush}"
-                                BorderBrush="{ThemeResource CardBorderBrush}"
-                                BorderThickness="1">
+                            Background="{ThemeResource CardBackgroundBrush}"
+                            BorderBrush="{ThemeResource CardBorderBrush}"
+                            BorderThickness="1">
                             <StackPanel Spacing="20">
 
-                                <!-- Camera placeholder -->
+                                <!-- Camera preview area -->
                                 <Border Height="220" CornerRadius="18"
-                                        Background="#F0F6FF"
-                                        BorderBrush="#BFDBFE" BorderThickness="2">
-                                    <StackPanel VerticalAlignment="Center"
-                                                HorizontalAlignment="Center"
-                                                Spacing="12">
-                                        <TextBlock Text="📷" FontSize="48"
-                                                   HorizontalAlignment="Center"/>
-                                        <TextBlock x:Name="GestureCameraStatusText"
-                                                   Text="Camera registration coming soon"
-                                                   FontSize="15" FontWeight="SemiBold"
-                                                   TextAlignment="Center"
-                                                   Foreground="#1E40AF"/>
-                                        <TextBlock Text="Gesture capture will be enabled in a future update."
-                                                   FontSize="13" TextWrapping="Wrap"
-                                                   TextAlignment="Center"
-                                                   Foreground="#4B5563"
-                                                   MaxWidth="280"/>
+                                    Background="#0F0F0F"
+                                    BorderBrush="{ThemeResource AccentBrush}" 
+                                    BorderThickness="2">
+                                    <Grid>
+                                        <!-- Live camera feed -->
+                                        <Image x:Name="RegistrationCameraPreview"
+                                            Stretch="Uniform"
+                                            Height="220"/>
+
+                                        <!-- Placeholder when camera is off -->
+                                        <StackPanel x:Name="RegistrationCameraPlaceholder"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            Spacing="12">
+                                            <TextBlock Text="📷" FontSize="48"
+                                                HorizontalAlignment="Center"/>
+                                            <TextBlock x:Name="RegistrationCameraStatus"
+                                                Text="Click 'Start Camera' to begin"
+                                                FontSize="15" FontWeight="SemiBold"
+                                                TextAlignment="Center"
+                                                Foreground="#1E40AF"/>
+                                            <TextBlock Text="You'll perform a swipe gesture in front of the camera"
+                                                FontSize="13" TextWrapping="Wrap"
+                                                TextAlignment="Center"
+                                                Foreground="#9CA3AF"
+                                                MaxWidth="280"/>
+                                        </StackPanel>
+
+                                        <!-- Scan corners overlay -->
+                                        <Border Width="46" Height="46"
+                                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                                            Margin="12"
+                                            BorderBrush="{ThemeResource AccentBrush}"
+                                            BorderThickness="4,4,0,0"
+                                            CornerRadius="8,0,0,0"/>
+                                        <Border Width="46" Height="46"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="12"
+                                            BorderBrush="{ThemeResource AccentBrush}"
+                                            BorderThickness="0,4,4,0"
+                                            CornerRadius="0,8,0,0"/>
+                                        <Border Width="46" Height="46"
+                                            HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                            Margin="12"
+                                            BorderBrush="{ThemeResource AccentBrush}"
+                                            BorderThickness="4,0,0,4"
+                                            CornerRadius="0,0,0,8"/>
+                                        <Border Width="46" Height="46"
+                                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                            Margin="12"
+                                            BorderBrush="{ThemeResource AccentBrush}"
+                                            BorderThickness="0,0,4,4"
+                                            CornerRadius="0,0,8,0"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Camera control button -->
+                                <Button x:Name="StartRegistrationCameraButton"
+                                    Content="📷 Start Camera"
+                                    Style="{StaticResource PrimaryActionButtonStyle}"
+                                    Click="StartRegistrationCamera_Click"/>
+
+                                <!-- Detected gesture display -->
+                                <Border CornerRadius="14" Padding="16"
+                                    Background="{ThemeResource InputBackgroundBrush}"
+                                    BorderBrush="{ThemeResource InputBorderBrush}"
+                                    BorderThickness="1">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Detected gesture"
+                                            FontSize="13" FontWeight="SemiBold"
+                                            Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                        <TextBlock x:Name="RegistrationDetectedGesture"
+                                            Text="No gesture detected yet"
+                                            FontSize="18" FontWeight="SemiBold"
+                                            Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                        <TextBlock x:Name="RegistrationGestureInstruction"
+                                            Text="Perform a clear swipe: 👈 Left, 👉 Right, 👆 Up, or 👇 Down"
+                                            FontSize="13" TextWrapping="Wrap"
+                                            Foreground="{ThemeResource SecondaryTextBrush}"/>
                                     </StackPanel>
                                 </Border>
 
-                                <!-- Gesture selector (placeholder) -->
-                                <StackPanel Spacing="8">
-                                    <TextBlock Text="Gesture to register"
-                                               FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{ThemeResource PrimaryTextBrush}"/>
-                                    <ComboBox x:Name="GestureCombo"
-                                              HorizontalAlignment="Stretch"
-                                              CornerRadius="12"
-                                              SelectedIndex="0"
-                                              IsEnabled="False">
-                                        <ComboBoxItem Content="👋  Swipe Right"/>
-                                        <ComboBoxItem Content="👈  Swipe Left"/>
-                                        <ComboBoxItem Content="👆  Swipe Up"/>
-                                        <ComboBoxItem Content="👇  Swipe Down"/>
-                                    </ComboBox>
-                                    <TextBlock Text="Gesture registration will be unlocked in a future update."
-                                               FontSize="12" TextWrapping="Wrap"
-                                               Foreground="{ThemeResource SecondaryTextBrush}"/>
-                                </StackPanel>
+                                <!-- Recorded gesture -->
+                                <Border x:Name="GestureRecordedBadge"
+                                    CornerRadius="14" Padding="16"
+                                    Background="#ECFDF5"
+                                    BorderBrush="#6EE7B7" BorderThickness="2"
+                                    Visibility="Collapsed">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock x:Name="RecordedGestureText"
+                                            FontSize="15" FontWeight="SemiBold"
+                                            Foreground="#065F46"/>
+                                        <TextBlock Text="✓ Gesture recorded successfully! You can continue."
+                                            FontSize="13"
+                                            Foreground="#047857"/>
+                                    </StackPanel>
+                                </Border>
+                                <Button x:Name="SkipGestureButton"
+                                    Content="⏭ Skip (Demo Mode)"
+                                    Style="{StaticResource SecondaryActionButtonStyle}"
+                                    Click="SkipGesture_Click"/>
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -396,11 +458,14 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <Button Grid.Column="0" Content="← Back"
-                                            Style="{StaticResource SecondaryActionButtonStyle}"
-                                            Click="Step3Back_Click"/>
-                                    <Button Grid.Column="2" Content="Finish Setup"
-                                            Style="{StaticResource PrimaryActionButtonStyle}"
-                                            Click="Step3Finish_Click"/>
+                                        Style="{StaticResource SecondaryActionButtonStyle}"
+                                        Click="Step3Back_Click"/>
+                                    <Button x:Name="FinishSetupButton"
+                                        Grid.Column="2" 
+                                        Content="Finish Setup"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        IsEnabled="False"
+                                        Click="Step3Finish_Click"/>
                                 </Grid>
                             </StackPanel>
                         </Border>

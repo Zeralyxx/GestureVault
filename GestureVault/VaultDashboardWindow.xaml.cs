@@ -744,24 +744,31 @@ namespace GestureVault
 
             if (isPassword)
             {
-                var pwRow = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 10
-                };
+                var pwGrid = new Grid();
+                pwGrid.ColumnDefinitions.Add(
+                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                pwGrid.ColumnDefinitions.Add(
+                    new ColumnDefinition { Width = GridLength.Auto });
+                pwGrid.ColumnDefinitions.Add(
+                    new ColumnDefinition { Width = GridLength.Auto });
+
                 var pwText = new TextBlock
                 {
                     Text = new string('•', value.Length),
                     FontSize = 15,
                     VerticalAlignment = VerticalAlignment.Center,
+                    TextWrapping = TextWrapping.Wrap,
                     Foreground = new SolidColorBrush(PrimaryText)
                 };
+                Grid.SetColumn(pwText, 0);
+
                 var revealBtn = new Button
                 {
                     Content = "👁",
                     Background = new SolidColorBrush(Colors.Transparent),
                     BorderThickness = new Thickness(0),
-                    Padding = new Thickness(4)
+                    Padding = new Thickness(6),
+                    VerticalAlignment = VerticalAlignment.Center,
                 };
                 bool revealed = false;
                 revealBtn.Click += (s, e) =>
@@ -770,9 +777,33 @@ namespace GestureVault
                     pwText.Text = revealed ? value : new string('•', value.Length);
                     revealBtn.Content = revealed ? "🙈" : "👁";
                 };
-                pwRow.Children.Add(pwText);
-                pwRow.Children.Add(revealBtn);
-                row.Children.Add(pwRow);
+                Grid.SetColumn(revealBtn, 1);
+
+                var copyBtn = new Button
+                {
+                    Content = "📋",
+                    Background = new SolidColorBrush(Colors.Transparent),
+                    BorderThickness = new Thickness(0),
+                    Padding = new Thickness(6),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                copyBtn.Click += async (s, e) =>
+                {
+                    var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                    dataPackage.SetText(value);
+                    Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+
+                    // Brief visual feedback
+                    copyBtn.Content = "✅";
+                    await System.Threading.Tasks.Task.Delay(1500);
+                    copyBtn.Content = "📋";
+                };
+                Grid.SetColumn(copyBtn, 2);
+
+                pwGrid.Children.Add(pwText);
+                pwGrid.Children.Add(revealBtn);
+                pwGrid.Children.Add(copyBtn);
+                row.Children.Add(pwGrid);
             }
             else
             {
@@ -818,7 +849,7 @@ namespace GestureVault
             {
                 // Delete encrypted files from disk if document
                 if (_selectedItem.Type == VaultItemType.Document)
-                    _storage.DeleteItemFolder(_selectedItem.Id);
+                    _storage.DeleteItem(_selectedItem);
 
                 _allItems.Remove(_selectedItem);
                 SaveItems();
@@ -929,50 +960,61 @@ namespace GestureVault
                 string.IsNullOrWhiteSpace(newPw) ||
                 string.IsNullOrWhiteSpace(confirm))
             {
-                await ShowDialog("Missing fields",
-                    "Please fill in all three password fields.");
+                await ShowDialog("Missing fields", "Please fill in all three password fields.");
                 return;
             }
 
             // Verify current password
-            string enteredHash = HashPassword(current);
             string? storedHash = ApplicationData.Current.LocalSettings
                                      .Values["MasterPasswordHash"] as string;
-            if (storedHash == null || enteredHash != storedHash)
+            if (storedHash == null || !PasswordService.VerifyPassword(current, storedHash))
             {
-                await ShowDialog("Incorrect password",
-                    "The current password you entered is wrong.");
+                await ShowDialog("Incorrect password", "The current password you entered is wrong.");
                 CurrentPasswordBox.Password = string.Empty;
                 return;
             }
 
-            if (newPw.Length < 8)
+            // Check new password strength
+            var strength = PasswordService.AssessStrength(newPw);
+            if (strength.Strength <= PasswordService.PasswordStrength.Weak)
             {
-                await ShowDialog("Password too short",
-                    "Your new password must be at least 8 characters.");
+                string message = "Your new password is too weak.\n\n";
+                if (strength.Suggestions.Count > 0)
+                {
+                    message += "Suggestions:\n• " + string.Join("\n• ", strength.Suggestions);
+                }
+                await ShowDialog("Weak Password", message);
                 return;
             }
+
             if (newPw != confirm)
             {
                 await ShowDialog("Passwords don't match",
                     "The new password and confirmation don't match.");
-                ChangeNewPasswordBox.Password = string.Empty;
-                ChangeConfirmPasswordBox.Password = string.Empty;
                 return;
             }
 
-            // Persist new hash and update session
-            ApplicationData.Current.LocalSettings.Values["MasterPasswordHash"] =
-                HashPassword(newPw);
-            SessionState.MasterPassword = newPw;
-            _storage.UnlockWithPassword(newPw);
+            try
+            {
+                // Re-encrypt vault with new password if using VaultStorageService
+                _storage.ChangePassword(current, newPw);
+
+                // Update stored hash
+                ApplicationData.Current.LocalSettings.Values["MasterPasswordHash"] =
+                    PasswordService.HashPassword(newPw);
+                SessionState.MasterPassword = newPw;
+
+                await ShowDialog("Password updated",
+                    "Your master password has been changed and all data re-encrypted.");
+            }
+            catch (Exception ex)
+            {
+                await ShowDialog("Error", $"Failed to change password: {ex.Message}");
+            }
 
             CurrentPasswordBox.Password = string.Empty;
             ChangeNewPasswordBox.Password = string.Empty;
             ChangeConfirmPasswordBox.Password = string.Empty;
-
-            await ShowDialog("Password updated",
-                "Your master password has been changed successfully.");
             ResetIdleTimer();
         }
 
@@ -994,23 +1036,32 @@ namespace GestureVault
                 return;
             }
 
-            // TODO: encrypt before saving (Issue #2 — plaintext passphrase in LocalSettings)
-            ApplicationData.Current.LocalSettings.Values["RegisteredPassphrase"] = phrase;
+            try
+            {
+                _storage.SavePassphrase(phrase);
+                string? savedPhrase = _storage.LoadPassphrase();
+                if (string.IsNullOrWhiteSpace(savedPhrase))
+                {
+                    await ShowDialog("Passphrase not saved",
+                        "The new voice passphrase could not be verified after saving. Please try again.");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowDialog("Passphrase not saved",
+                    $"Could not save the new voice passphrase: {ex.Message}");
+                return;
+            }
 
             ChangePassphraseBox.Text = string.Empty;
 
             await ShowDialog("Passphrase updated",
-                "Your voice passphrase has been changed. It will take effect on the next login.");
+                "Your voice passphrase has been changed. Lock the vault and sign in again to use it.");
             ResetIdleTimer();
         }
 
-        // ── Hash helper (mirrors MainWindow / RegistrationWindow) ─────────────
-        private static string HashPassword(string password)
-        {
-            byte[] bytes = System.Security.Cryptography.SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes(password));
-            return Convert.ToHexString(bytes);
-        }
+
 
         private void SaveSettingsButton_Click(object s, RoutedEventArgs e)
         {
@@ -1064,25 +1115,56 @@ namespace GestureVault
 
         private void ResetIdleTimer() => _lastActivity = DateTime.Now;
 
+        // Update the LockVault method to handle edge cases
         private void LockVault()
         {
-            _autoLockTimer?.Stop();
+            try
+            {
+                _autoLockTimer?.Stop();
 
-            // Clean up all decrypted temp files before locking
-            foreach (var t in _openTempFiles)
-                _storage.CleanupTempFile(t);
-            _openTempFiles.Clear();
+                // Clean up all decrypted temp files before locking
+                foreach (var t in _openTempFiles)
+                {
+                    try
+                    {
+                        _storage.CleanupTempFile(t);
+                    }
+                    catch { /* Best effort per file */ }
+                }
+                _openTempFiles.Clear();
 
-            _storage.Lock();
+                _storage.Lock();
+            }
+            catch { /* Ensure we still clear session and navigate even if cleanup fails */ }
+
+            // Clear session state
             SessionState.MasterPassword = string.Empty;
 
+            // Navigate to login
             var mainWindow = new MainWindow();
             mainWindow.Activate();
             this.Close();
         }
 
-        private void LockVaultButton_Click(object s, RoutedEventArgs e) =>
-            LockVault();
+        // Replace the LockVaultButton_Click handler
+        private async void LockVaultButton_Click(object s, RoutedEventArgs e)
+        {
+            var confirmDialog = new ContentDialog
+            {
+                Title = "Lock Vault",
+                Content = "Are you sure you want to lock the vault? Any unsaved changes will be preserved.",
+                PrimaryButtonText = "Lock",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await confirmDialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                LockVault();
+            }
+        }
 
         // ══════════════════════════════════════════════════════════════════════
         // THEME HELPERS
