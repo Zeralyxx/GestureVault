@@ -3,6 +3,8 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using System;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Windows.Storage;
 
 namespace GestureVault
 {
@@ -91,6 +93,21 @@ namespace GestureVault
             var mainWindow = new MainWindow();
             mainWindow.Activate();
             this.Close();
+        }
+
+        private async void ShowHintButton_Click(object sender, RoutedEventArgs e)
+        {
+            string hint = ApplicationData.Current.LocalSettings.Values["PassphraseHint"] as string ?? string.Empty;
+            var dialog = new ContentDialog
+            {
+                Title = "Passphrase hint",
+                Content = string.IsNullOrWhiteSpace(hint)
+                    ? "No passphrase hint has been saved."
+                    : hint,
+                CloseButtonText = "OK",
+                XamlRoot = this.Content.XamlRoot
+            };
+            await dialog.ShowAsync();
         }
     }
 }

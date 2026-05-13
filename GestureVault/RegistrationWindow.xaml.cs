@@ -6,6 +6,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Windows.Storage;
 using Windows.UI;
 
@@ -18,6 +20,9 @@ namespace GestureVault
         private bool _confirmPasswordVisible = false;
         private GestureService? _registrationGestureService;
         private string _registeredGestureDirection = "SWIPE_RIGHT"; // default
+        private readonly List<string> _registeredGestureSequence = new();
+        private int _registrationGestureIndex = 0;
+        private bool _waitingForNextRegistrationGesture = false;
         private bool _gestureRecorded = false;
 
         public RegistrationWindow()
@@ -159,11 +164,16 @@ namespace GestureVault
 
         private void Step3Back_Click(object sender, RoutedEventArgs e) => AdvanceTo(2);
 
-        private void Step3Finish_Click(object sender, RoutedEventArgs e)
+        private async void Step3Finish_Click(object sender, RoutedEventArgs e)
         {
+            FinishSetupButton.IsEnabled = false;
+
+            try
+            {
             // Stop camera if running
             _registrationGestureService?.Stop();
             _registrationGestureService?.Dispose();
+            _registrationGestureService = null;
 
             string pw = _newPasswordVisible
                 ? NewPasswordTextBox.Text
@@ -176,6 +186,9 @@ namespace GestureVault
 
             // Store password with secure hashing
             settings.Values["MasterPasswordHash"] = PasswordService.HashPassword(pw);
+            settings.Values["PasswordHint"] = PasswordHintBox.Text.Trim();
+            settings.Values["PassphraseHint"] = PassphraseHintBox.Text.Trim();
+            settings.Values["GestureHint"] = GestureHintBox.Text.Trim();
 
             // Persist voice passphrase — encrypted
             var storage = new VaultStorageService();
@@ -185,6 +198,10 @@ namespace GestureVault
 
             // ── Gesture: save the ACTUALLY detected gesture ─────────────────────────
             settings.Values["RegisteredGesture"] = _registeredGestureDirection;
+            settings.Values["RegisteredGestureSequence"] = string.Join("|",
+                _registeredGestureSequence.Count >= 3
+                    ? _registeredGestureSequence.Take(3)
+                    : Enumerable.Repeat(_registeredGestureDirection, 3));
 
             // Mark registration complete
             settings.Values["RegistrationComplete"] = true;
@@ -192,6 +209,12 @@ namespace GestureVault
             var mainWindow = new MainWindow();
             mainWindow.Activate();
             this.Close();
+            }
+            catch (Exception ex)
+            {
+                FinishSetupButton.IsEnabled = _gestureRecorded;
+                await ShowDialog("Setup could not be saved", ex.Message);
+            }
         }
 
         // ── Step UI switcher ──────────────────────────────────────────────────
@@ -205,12 +228,18 @@ namespace GestureVault
             if (step == 3)
             {
                 _gestureRecorded = false;
+                _registeredGestureSequence.Clear();
+                _registrationGestureIndex = 0;
+                _waitingForNextRegistrationGesture = false;
                 GestureRecordedBadge.Visibility = Visibility.Collapsed;
                 RegistrationDetectedGesture.Text = "No gesture detected yet";
                 RegistrationCameraStatus.Text = "Click 'Start Camera' to begin";
+                RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: perform a clear swipe.";
                 RegistrationCameraPlaceholder.Visibility = Visibility.Visible;
                 RegistrationCameraPreview.Source = null;
                 StartRegistrationCameraButton.Content = "📷 Start Camera";
+                NextRegistrationGestureButton.Content = "Next Gesture";
+                NextRegistrationGestureButton.IsEnabled = false;
                 FinishSetupButton.IsEnabled = false;
             }
             else
@@ -260,28 +289,28 @@ namespace GestureVault
             {
                 DispatcherQueue.TryEnqueue(() =>
                 {
-                    string gestureEmoji = e.Direction switch
+                    if (_registeredGestureSequence.Count >= 3 || _waitingForNextRegistrationGesture)
                     {
-                        "SWIPE_RIGHT" => "👋 Swipe Right",
-                        "SWIPE_LEFT" => "👈 Swipe Left",
-                        "SWIPE_UP" => "👆 Swipe Up",
-                        "SWIPE_DOWN" => "👇 Swipe Down",
-                        _ => e.Direction
-                    };
+                        return;
+                    }
 
-                    RegistrationDetectedGesture.Text = gestureEmoji;
-                    RegistrationGestureInstruction.Text = "Gesture detected! Click 'Stop Camera' to lock it in.";
+                    string gestureName = GestureDirectionToLabel(e.Direction);
 
-                    // Store the direction
+                    _registeredGestureSequence.Add(e.Direction);
+                    _waitingForNextRegistrationGesture = true;
+                    RegistrationDetectedGesture.Text = gestureName;
+
                     _registeredGestureDirection = e.Direction;
-                    _gestureRecorded = true;
+                    _gestureRecorded = _registeredGestureSequence.Count >= 3;
 
-                    // Show success badge
                     GestureRecordedBadge.Visibility = Visibility.Visible;
-                    RecordedGestureText.Text = $"Registered: {gestureEmoji}";
-
-                    // Enable finish button
-                    FinishSetupButton.IsEnabled = true;
+                    RecordedGestureText.Text = $"Registered: {GestureSequenceLabel()}";
+                    NextRegistrationGestureButton.Content = "Next Gesture";
+                    NextRegistrationGestureButton.IsEnabled = !_gestureRecorded;
+                    FinishSetupButton.IsEnabled = _gestureRecorded;
+                    RegistrationGestureInstruction.Text = _gestureRecorded
+                        ? "All 3 gestures recorded. Click Finish Setup."
+                        : $"{RegistrationGestureStepLabel()} recorded. Click Next Gesture when you are ready.";
                 });
             };
         }
@@ -299,6 +328,7 @@ namespace GestureVault
                     _registrationGestureService.Start();
                     RegistrationCameraPlaceholder.Visibility = Visibility.Collapsed;
                     RegistrationCameraStatus.Text = "Camera active - perform your swipe now";
+                    RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: perform a clear swipe.";
                     StartRegistrationCameraButton.Content = "⏹ Stop Camera";
                 }
                 catch (Exception ex)
@@ -310,6 +340,7 @@ namespace GestureVault
             {
                 _registrationGestureService.Stop();
                 RegistrationCameraPlaceholder.Visibility = Visibility.Visible;
+                NextRegistrationGestureButton.IsEnabled = _waitingForNextRegistrationGesture && !_gestureRecorded;
 
                 if (_gestureRecorded)
                 {
@@ -324,6 +355,47 @@ namespace GestureVault
             }
         }
 
+        private string GestureSequenceLabel() =>
+            string.Join(" -> ", _registeredGestureSequence.Select(GestureDirectionToLabel));
+
+        private string RegistrationGestureStepLabel() => _registrationGestureIndex switch
+        {
+            0 => "First gesture",
+            1 => "Second gesture",
+            _ => "Final gesture"
+        };
+
+        private void NextRegistrationGesture_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_waitingForNextRegistrationGesture)
+            {
+                return;
+            }
+
+            if (_gestureRecorded)
+            {
+                FinishSetupButton.IsEnabled = true;
+                NextRegistrationGestureButton.IsEnabled = false;
+                RegistrationGestureInstruction.Text = "All 3 gestures recorded. Click Finish Setup.";
+                return;
+            }
+
+            _registrationGestureIndex++;
+            _waitingForNextRegistrationGesture = false;
+            NextRegistrationGestureButton.IsEnabled = false;
+            RegistrationDetectedGesture.Text = "Ready for next gesture";
+            RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: perform a clear swipe.";
+        }
+
+        private static string GestureDirectionToLabel(string direction) => direction switch
+        {
+            "SWIPE_RIGHT" => "Swipe Right",
+            "SWIPE_LEFT" => "Swipe Left",
+            "SWIPE_UP" => "Swipe Up",
+            "SWIPE_DOWN" => "Swipe Down",
+            _ => direction
+        };
+
         //DEMO TEST
 
         private void SkipGesture_Click(object sender, RoutedEventArgs e)
@@ -332,18 +404,23 @@ namespace GestureVault
             _registrationGestureService?.Stop();
             _registrationGestureService?.Dispose();
 
-            // Use default gesture
+            // Use default gesture sequence
             _registeredGestureDirection = "SWIPE_RIGHT";
+            _registeredGestureSequence.Clear();
+            _registeredGestureSequence.AddRange(new[] { "SWIPE_RIGHT", "SWIPE_LEFT", "SWIPE_UP" });
+            _registrationGestureIndex = 2;
+            _waitingForNextRegistrationGesture = false;
             _gestureRecorded = true;
 
             // Enable finish button
             FinishSetupButton.IsEnabled = true;
+            NextRegistrationGestureButton.IsEnabled = false;
 
             // Update UI
             RegistrationDetectedGesture.Text = "⏭ Skipped (Demo)";
             GestureRecordedBadge.Visibility = Visibility.Visible;
-            RecordedGestureText.Text = "Registered: 👋 Swipe Right (default)";
-            RegistrationCameraStatus.Text = "✓ Gesture set to default";
+            RecordedGestureText.Text = $"Registered: {GestureSequenceLabel()}";
+            RegistrationCameraStatus.Text = "Gesture sequence set to default";
         }
     
 

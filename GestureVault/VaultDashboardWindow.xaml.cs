@@ -39,6 +39,9 @@ namespace GestureVault
         private int _autoLockMinutes = 5;
         private bool _autoLockEnabled = true;
         private bool _isLightMode = true;
+        private bool _currentPasswordVisible = false;
+        private bool _newPasswordVisible = false;
+        private bool _confirmPasswordVisible = false;
         private DateTime _lastActivity = DateTime.Now;
 
         // ── Constructor ───────────────────────────────────────────────────────
@@ -110,22 +113,22 @@ namespace GestureVault
 
         private Border BuildItemCard(VaultItem item)
         {
-            string emoji = item.Type switch
+            string itemBadge = item.Type switch
             {
-                VaultItemType.Password => "🔑",
-                VaultItemType.Note => "📝",
-                VaultItemType.Document => "📁",
-                _ => "📦"
+                VaultItemType.Password => "PW",
+                VaultItemType.Note => "NT",
+                VaultItemType.Document => "FL",
+                _ => "IT"
             };
 
             string subtitle = item.Type switch
             {
                 VaultItemType.Password =>
-                    $"Password • Updated {item.UpdatedAt}",
+                    $"Password | Updated {item.UpdatedAt}",
                 VaultItemType.Note =>
-                    $"Secure Note • Updated {item.UpdatedAt}",
+                    $"Secure Note | Updated {item.UpdatedAt}",
                 VaultItemType.Document =>
-                    $"Files • {item.Files.Count} file(s) • {item.UpdatedAt}",
+                    $"Files | {item.Files.Count} file(s) | {item.UpdatedAt}",
                 _ => item.UpdatedAt
             };
 
@@ -148,8 +151,9 @@ namespace GestureVault
 
             var icon = new TextBlock
             {
-                Text = emoji,
-                FontSize = 28,
+                Text = itemBadge,
+                FontSize = 18,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 14, 0)
             };
@@ -456,9 +460,9 @@ namespace GestureVault
             ViewItemTitle.Text = item.Title;
             ViewItemType.Text = item.Type switch
             {
-                VaultItemType.Password => "🔑 Password",
-                VaultItemType.Note => "📝 Secure Note",
-                VaultItemType.Document => "📁 Files",
+                VaultItemType.Password => "Password",
+                VaultItemType.Note => "Secure Note",
+                VaultItemType.Document => "Files",
                 _ => "Item"
             };
 
@@ -467,19 +471,19 @@ namespace GestureVault
             switch (item.Type)
             {
                 case VaultItemType.Password:
-                    AddViewRow("Username", item.Username ?? "—");
-                    AddViewRow("Password", item.Password ?? "—",
+                    AddViewRow("Username", item.Username ?? "-");
+                    AddViewRow("Password", item.Password ?? "-",
                                isPassword: true);
                     if (!string.IsNullOrEmpty(item.Url))
                         AddViewRow("Website", item.Url);
                     break;
 
                 case VaultItemType.Note:
-                    AddViewRow("Note", item.NoteContent ?? "—");
+                    AddViewRow("Note", item.NoteContent ?? "-");
                     break;
 
                 case VaultItemType.Document:
-                    AddViewRow("Description", item.Description ?? "—");
+                    AddViewRow("Description", item.Description ?? "-");
                     BuildFilesFileList(item);
                     break;
             }
@@ -572,7 +576,7 @@ namespace GestureVault
             });
             namePanel.Children.Add(new TextBlock
             {
-                Text = $"Added {vf.AddedAt}  �  encrypted",
+                Text = $"Added {vf.AddedAt} | encrypted",
                 FontSize = 11,
                 Foreground = new SolidColorBrush(SecondaryText)
             });
@@ -594,8 +598,8 @@ namespace GestureVault
 
             var delBtn = new Button
             {
-                Content = "??",
-                Width = 36,
+                Content = "Delete",
+                Width = 64,
                 Height = 32,
                 Background = new SolidColorBrush(Colors.Transparent),
                 BorderThickness = new Thickness(0),
@@ -649,8 +653,8 @@ namespace GestureVault
             {
                 Title = "Add to vault item",
                 Content = "Would you like to add individual files or an entire folder?",
-                PrimaryButtonText = "📁 Files",
-                SecondaryButtonText = "📁 Folder",
+                PrimaryButtonText = "Files",
+                SecondaryButtonText = "Folder",
                 CloseButtonText = "Cancel",
                 XamlRoot = this.Content.XamlRoot
             };
@@ -894,7 +898,7 @@ namespace GestureVault
 
                 var revealBtn = new Button
                 {
-                    Content = "👁",
+                    Content = "Show",
                     Background = new SolidColorBrush(Colors.Transparent),
                     BorderThickness = new Thickness(0),
                     Padding = new Thickness(6),
@@ -905,13 +909,13 @@ namespace GestureVault
                 {
                     revealed = !revealed;
                     pwText.Text = revealed ? value : new string('\u2022', value.Length);
-                    revealBtn.Content = revealed ? "🙈" : "👁";
+                    revealBtn.Content = revealed ? "Hide" : "Show";
                 };
                 Grid.SetColumn(revealBtn, 1);
 
                 var copyBtn = new Button
                 {
-                    Content = "📋",
+                    Content = "Copy",
                     Background = new SolidColorBrush(Colors.Transparent),
                     BorderThickness = new Thickness(0),
                     Padding = new Thickness(6),
@@ -924,9 +928,9 @@ namespace GestureVault
                     Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
 
                     // Brief visual feedback
-                    copyBtn.Content = "✅";
+                    copyBtn.Content = "Copied";
                     await System.Threading.Tasks.Task.Delay(1500);
-                    copyBtn.Content = "📋";
+                    copyBtn.Content = "Copy";
                 };
                 Grid.SetColumn(copyBtn, 2);
 
@@ -1053,6 +1057,9 @@ namespace GestureVault
 
             AutoLockToggle.IsOn = _autoLockEnabled;
             LightModeToggle.IsOn = _isLightMode;
+            ChangePasswordHintBox.Text = settings.Values["PasswordHint"] as string ?? string.Empty;
+            ChangePassphraseHintBox.Text = settings.Values["PassphraseHint"] as string ?? string.Empty;
+            ChangeGestureHintBox.Text = settings.Values["GestureHint"] as string ?? string.Empty;
             AutoLockCombo.SelectedIndex = _autoLockMinutes switch
             {
                 1 => 0,
@@ -1068,9 +1075,21 @@ namespace GestureVault
         {
             // Clear credential fields every time the overlay opens
             CurrentPasswordBox.Password = string.Empty;
+            CurrentPasswordTextBox.Text = string.Empty;
             ChangeNewPasswordBox.Password = string.Empty;
+            ChangeNewPasswordTextBox.Text = string.Empty;
             ChangeConfirmPasswordBox.Password = string.Empty;
+            ChangeConfirmPasswordTextBox.Text = string.Empty;
+            SetPasswordFieldVisibility(CurrentPasswordBox, CurrentPasswordTextBox, ToggleCurrentPasswordButton, false);
+            SetPasswordFieldVisibility(ChangeNewPasswordBox, ChangeNewPasswordTextBox, ToggleNewPasswordButton, false);
+            SetPasswordFieldVisibility(ChangeConfirmPasswordBox, ChangeConfirmPasswordTextBox, ToggleConfirmPasswordButton, false);
+            _currentPasswordVisible = false;
+            _newPasswordVisible = false;
+            _confirmPasswordVisible = false;
             ChangePassphraseBox.Text = string.Empty;
+            ChangePasswordHintBox.Text = ApplicationData.Current.LocalSettings.Values["PasswordHint"] as string ?? string.Empty;
+            ChangePassphraseHintBox.Text = ApplicationData.Current.LocalSettings.Values["PassphraseHint"] as string ?? string.Empty;
+            ChangeGestureHintBox.Text = ApplicationData.Current.LocalSettings.Values["GestureHint"] as string ?? string.Empty;
 
             SettingsOverlay.Visibility = Visibility.Visible;
             ResetIdleTimer();
@@ -1080,11 +1099,38 @@ namespace GestureVault
             SettingsOverlay.Visibility = Visibility.Collapsed;
 
         // ── Change password ───────────────────────────────────────────────────
+        private void ToggleCurrentPasswordButton_Click(object s, RoutedEventArgs e) =>
+            TogglePasswordField(CurrentPasswordBox, CurrentPasswordTextBox, ToggleCurrentPasswordButton, ref _currentPasswordVisible);
+
+        private void ToggleNewPasswordButton_Click(object s, RoutedEventArgs e) =>
+            TogglePasswordField(ChangeNewPasswordBox, ChangeNewPasswordTextBox, ToggleNewPasswordButton, ref _newPasswordVisible);
+
+        private void ToggleConfirmPasswordButton_Click(object s, RoutedEventArgs e) =>
+            TogglePasswordField(ChangeConfirmPasswordBox, ChangeConfirmPasswordTextBox, ToggleConfirmPasswordButton, ref _confirmPasswordVisible);
+
+        private static void TogglePasswordField(PasswordBox passwordBox, TextBox textBox, Button button, ref bool visible)
+        {
+            visible = !visible;
+            if (visible)
+                textBox.Text = passwordBox.Password;
+            else
+                passwordBox.Password = textBox.Text;
+
+            SetPasswordFieldVisibility(passwordBox, textBox, button, visible);
+        }
+
+        private static void SetPasswordFieldVisibility(PasswordBox passwordBox, TextBox textBox, Button button, bool visible)
+        {
+            passwordBox.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+            textBox.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            button.Content = visible ? "Hide" : "Show";
+        }
+
         private async void ChangePasswordButton_Click(object s, RoutedEventArgs e)
         {
-            string current = CurrentPasswordBox.Password;
-            string newPw = ChangeNewPasswordBox.Password;
-            string confirm = ChangeConfirmPasswordBox.Password;
+            string current = _currentPasswordVisible ? CurrentPasswordTextBox.Text : CurrentPasswordBox.Password;
+            string newPw = _newPasswordVisible ? ChangeNewPasswordTextBox.Text : ChangeNewPasswordBox.Password;
+            string confirm = _confirmPasswordVisible ? ChangeConfirmPasswordTextBox.Text : ChangeConfirmPasswordBox.Password;
 
             if (string.IsNullOrWhiteSpace(current) ||
                 string.IsNullOrWhiteSpace(newPw) ||
@@ -1101,6 +1147,7 @@ namespace GestureVault
             {
                 await ShowDialog("Incorrect password", "The current password you entered is wrong.");
                 CurrentPasswordBox.Password = string.Empty;
+                CurrentPasswordTextBox.Text = string.Empty;
                 return;
             }
 
@@ -1111,7 +1158,7 @@ namespace GestureVault
                 string message = "Your new password is too weak.\n\n";
                 if (strength.Suggestions.Count > 0)
                 {
-                    message += "Suggestions:\n• " + string.Join("\n• ", strength.Suggestions);
+                    message += "Suggestions:\n- " + string.Join("\n- ", strength.Suggestions);
                 }
                 await ShowDialog("Weak Password", message);
                 return;
@@ -1132,6 +1179,8 @@ namespace GestureVault
                 // Update stored hash
                 ApplicationData.Current.LocalSettings.Values["MasterPasswordHash"] =
                     PasswordService.HashPassword(newPw);
+                ApplicationData.Current.LocalSettings.Values["PasswordHint"] =
+                    ChangePasswordHintBox.Text.Trim();
                 SessionState.MasterPassword = newPw;
 
                 await ShowDialog("Password updated",
@@ -1143,8 +1192,17 @@ namespace GestureVault
             }
 
             CurrentPasswordBox.Password = string.Empty;
+            CurrentPasswordTextBox.Text = string.Empty;
             ChangeNewPasswordBox.Password = string.Empty;
+            ChangeNewPasswordTextBox.Text = string.Empty;
             ChangeConfirmPasswordBox.Password = string.Empty;
+            ChangeConfirmPasswordTextBox.Text = string.Empty;
+            SetPasswordFieldVisibility(CurrentPasswordBox, CurrentPasswordTextBox, ToggleCurrentPasswordButton, false);
+            SetPasswordFieldVisibility(ChangeNewPasswordBox, ChangeNewPasswordTextBox, ToggleNewPasswordButton, false);
+            SetPasswordFieldVisibility(ChangeConfirmPasswordBox, ChangeConfirmPasswordTextBox, ToggleConfirmPasswordButton, false);
+            _currentPasswordVisible = false;
+            _newPasswordVisible = false;
+            _confirmPasswordVisible = false;
             ResetIdleTimer();
         }
 
@@ -1169,6 +1227,8 @@ namespace GestureVault
             try
             {
                 _storage.SavePassphrase(phrase);
+                ApplicationData.Current.LocalSettings.Values["PassphraseHint"] =
+                    ChangePassphraseHintBox.Text.Trim();
                 string? savedPhrase = _storage.LoadPassphrase();
                 if (string.IsNullOrWhiteSpace(savedPhrase))
                 {
@@ -1191,6 +1251,21 @@ namespace GestureVault
             ResetIdleTimer();
         }
 
+        private async void SaveHintsButton_Click(object s, RoutedEventArgs e)
+        {
+            SaveHints();
+            await ShowDialog("Hints saved", "Your verification hints have been updated.");
+            ResetIdleTimer();
+        }
+
+        private void SaveHints()
+        {
+            var settings = ApplicationData.Current.LocalSettings;
+            settings.Values["PasswordHint"] = ChangePasswordHintBox.Text.Trim();
+            settings.Values["PassphraseHint"] = ChangePassphraseHintBox.Text.Trim();
+            settings.Values["GestureHint"] = ChangeGestureHintBox.Text.Trim();
+        }
+
 
 
         private void SaveSettingsButton_Click(object s, RoutedEventArgs e)
@@ -1210,6 +1285,7 @@ namespace GestureVault
             settings.Values["AutoLockEnabled"] = _autoLockEnabled;
             settings.Values["AutoLockMinutes"] = _autoLockMinutes;
             settings.Values["IsLightMode"] = _isLightMode;
+            SaveHints();
 
             ApplyTheme(_isLightMode);
             StartAutoLockTimer();

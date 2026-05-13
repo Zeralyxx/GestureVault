@@ -216,6 +216,11 @@
                                     </Grid>
                                 </StackPanel>
 
+                                <TextBox x:Name="PasswordHintBox"
+                                         Header="Password hint"
+                                         PlaceholderText="Optional reminder for the password step"
+                                         CornerRadius="12"/>
+
                                 <!-- Password strength meter -->
                                 <StackPanel Spacing="6">
                                     <Grid>
@@ -289,6 +294,11 @@
                                                  FontSize="16"/>
                                     </Border>
                                 </StackPanel>
+
+                                <TextBox x:Name="PassphraseHintBox"
+                                         Header="Passphrase hint"
+                                         PlaceholderText="Optional reminder for the voice step"
+                                         CornerRadius="12"/>
 
                                 <!-- Hint box -->
                                 <Border CornerRadius="14" Padding="16"
@@ -411,6 +421,12 @@
                                     Style="{StaticResource PrimaryActionButtonStyle}"
                                     Click="StartRegistrationCamera_Click"/>
 
+                                <Button x:Name="NextRegistrationGestureButton"
+                                    Content="Next Gesture"
+                                    Style="{StaticResource SecondaryActionButtonStyle}"
+                                    IsEnabled="False"
+                                    Click="NextRegistrationGesture_Click"/>
+
                                 <!-- Detected gesture display -->
                                 <Border CornerRadius="14" Padding="16"
                                     Background="{ThemeResource InputBackgroundBrush}"
@@ -430,6 +446,11 @@
                                             Foreground="{ThemeResource SecondaryTextBrush}"/>
                                     </StackPanel>
                                 </Border>
+
+                                <TextBox x:Name="GestureHintBox"
+                                    Header="Gesture hint"
+                                    PlaceholderText="Optional reminder for the gesture step"
+                                    CornerRadius="12"/>
 
                                 <!-- Recorded gesture -->
                                 <Border x:Name="GestureRecordedBadge"

@@ -83,6 +83,12 @@
                                    TextAlignment="Center"
                                    TextWrapping="Wrap"
                                    Foreground="{ThemeResource SecondaryTextBrush}"/>
+                        <TextBlock x:Name="GestureStepText"
+                                   Text="First gesture"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   TextAlignment="Center"
+                                   Foreground="{ThemeResource AccentBrush}"/>
                     </StackPanel>
 
                     <!-- Gesture Card -->
@@ -177,10 +183,21 @@
                                 </StackPanel>
                             </Border>
 
+                            <Button x:Name="NextGestureButton"
+                                    Content="Next Gesture"
+                                    Style="{StaticResource SecondaryActionButtonStyle}"
+                                    IsEnabled="False"
+                                    Click="NextGestureButton_Click"/>
+
                             <Button x:Name="StartCameraButton"
                                     Content="Start Camera"
                                     Style="{StaticResource PrimaryActionButtonStyle}"
                                     Click="StartCameraButton_Click"/>
+
+                            <Button x:Name="ShowHintButton"
+                                    Content="Show Hint"
+                                    Style="{StaticResource SecondaryActionButtonStyle}"
+                                    Click="ShowHintButton_Click"/>
 
                             <TextBlock Text="or"
                                        FontSize="13"

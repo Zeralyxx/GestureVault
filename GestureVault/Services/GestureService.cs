@@ -24,7 +24,9 @@ namespace GestureVault.Services
 
         private VideoCapture? _capture;
         private CancellationTokenSource? _cts;
+        private Task? _captureTask;
         private readonly DispatcherQueue _dispatcher;
+        private readonly object _captureGate = new();
 
         // Motion tracking — stores last 20 hand centroids
         private readonly Queue<Point> _centroids = new(20);
@@ -50,15 +52,33 @@ namespace GestureVault.Services
             _cts = new CancellationTokenSource();
             IsRunning = true;
 
-            Task.Run(() => CaptureLoop(_cts.Token));
+            _captureTask = Task.Run(() => CaptureLoop(_cts.Token));
         }
 
         public void Stop()
         {
             IsRunning = false;
             _cts?.Cancel();
-            _capture?.Release();
-            _capture?.Dispose();
+
+            try
+            {
+                if (_captureTask != null && !_captureTask.IsCompleted)
+                    _captureTask.Wait(TimeSpan.FromMilliseconds(500));
+            }
+            catch
+            {
+                // The capture loop is best-effort during shutdown.
+            }
+
+            lock (_captureGate)
+            {
+                _capture?.Release();
+                _capture?.Dispose();
+                _capture = null;
+            }
+            _cts?.Dispose();
+            _cts = null;
+            _captureTask = null;
             _centroids.Clear();
         }
 
@@ -69,7 +89,13 @@ namespace GestureVault.Services
 
             while (!token.IsCancellationRequested)
             {
-                if (_capture == null || !_capture.Read(frame) || frame.Empty())
+                bool hasFrame;
+                lock (_captureGate)
+                {
+                    hasFrame = _capture != null && _capture.Read(frame) && !frame.Empty();
+                }
+
+                if (!hasFrame)
                     continue;
 
                 // 1. Send raw frame to UI for preview

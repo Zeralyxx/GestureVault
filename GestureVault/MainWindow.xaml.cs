@@ -93,6 +93,15 @@ namespace GestureVault
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
+        private void ShowHintButton_Click(object sender, RoutedEventArgs e)
+        {
+            string hint = ApplicationData.Current.LocalSettings.Values["PasswordHint"] as string ?? string.Empty;
+            ShowDialog("Password hint",
+                string.IsNullOrWhiteSpace(hint)
+                    ? "No password hint has been saved."
+                    : hint);
+        }
+
         private async void ShowDialog(string title, string message)
         {
             var dialog = new ContentDialog

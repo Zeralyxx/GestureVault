@@ -50,7 +50,7 @@
                     <Border Width="52" Height="52" CornerRadius="16"
                             Background="{ThemeResource AccentBrush}">
                         <Viewbox Margin="12">
-                            <TextBlock Text="🛡" Foreground="White"/>
+                            <TextBlock Text="GV" Foreground="White" FontWeight="SemiBold"/>
                         </Viewbox>
                     </Border>
                     <StackPanel VerticalAlignment="Center">
@@ -218,9 +218,9 @@
                               SelectedIndex="0" HorizontalAlignment="Stretch"
                               CornerRadius="12"
                               SelectionChanged="ItemTypeCombo_SelectionChanged">
-                        <ComboBoxItem Content="🔑  Password"/>
-                        <ComboBoxItem Content="📝  Secure Note"/>
-                        <ComboBoxItem Content="📁  Files"/>
+                        <ComboBoxItem Content="Password"/>
+                        <ComboBoxItem Content="Secure Note"/>
+                        <ComboBoxItem Content="Files"/>
                     </ComboBox>
 
                     <!-- Title -->
@@ -266,7 +266,7 @@
                                 HorizontalAlignment="Stretch"
                                 Style="{StaticResource CardButtonStyle}"
                                 Click="ChooseFileButton_Click"/>
-                            <Button Grid.Column="2" Content="📁 Choose Folder"
+                            <Button Grid.Column="2" Content="Choose Folder"
                                 HorizontalAlignment="Stretch"
                                 Style="{StaticResource CardButtonStyle}"
                                 Click="ChooseFolderButton_Click"/>
@@ -428,7 +428,7 @@
                                     BorderBrush="{ThemeResource InputBorderBrush}" BorderThickness="1">
                                 <StackPanel Spacing="14">
                                     <StackPanel Spacing="2">
-                                        <TextBlock Text="🔑  Master Password"
+                                        <TextBlock Text="Master Password"
                                                    FontSize="15" FontWeight="SemiBold"
                                                    Foreground="{ThemeResource PrimaryTextBrush}"/>
                                         <TextBlock Text="Change the password used to unlock your vault."
@@ -441,9 +441,28 @@
                                         <TextBlock Text="Current Password"
                                                    FontSize="13" FontWeight="SemiBold"
                                                    Foreground="{ThemeResource PrimaryTextBrush}"/>
-                                        <PasswordBox x:Name="CurrentPasswordBox"
+                                        <Grid>
+                                            <PasswordBox x:Name="CurrentPasswordBox"
+                                                         PlaceholderText="Enter current password"
+                                                         PasswordRevealMode="Hidden"
+                                                         Padding="12,0,74,0"
+                                                         CornerRadius="12"/>
+                                            <TextBox x:Name="CurrentPasswordTextBox"
                                                      PlaceholderText="Enter current password"
+                                                     Visibility="Collapsed"
+                                                     Padding="12,0,74,0"
                                                      CornerRadius="12"/>
+                                            <Button x:Name="ToggleCurrentPasswordButton"
+                                                    Content="Show"
+                                                    Width="58" Height="32"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,8,0"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Foreground="{ThemeResource MutedButtonForegroundBrush}"
+                                                    Click="ToggleCurrentPasswordButton_Click"/>
+                                        </Grid>
                                     </StackPanel>
 
                                     <!-- New password -->
@@ -451,9 +470,28 @@
                                         <TextBlock Text="New Password"
                                                    FontSize="13" FontWeight="SemiBold"
                                                    Foreground="{ThemeResource PrimaryTextBrush}"/>
-                                        <PasswordBox x:Name="ChangeNewPasswordBox"
+                                        <Grid>
+                                            <PasswordBox x:Name="ChangeNewPasswordBox"
+                                                         PlaceholderText="Enter new password (min 8 chars)"
+                                                         PasswordRevealMode="Hidden"
+                                                         Padding="12,0,74,0"
+                                                         CornerRadius="12"/>
+                                            <TextBox x:Name="ChangeNewPasswordTextBox"
                                                      PlaceholderText="Enter new password (min 8 chars)"
+                                                     Visibility="Collapsed"
+                                                     Padding="12,0,74,0"
                                                      CornerRadius="12"/>
+                                            <Button x:Name="ToggleNewPasswordButton"
+                                                    Content="Show"
+                                                    Width="58" Height="32"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,8,0"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Foreground="{ThemeResource MutedButtonForegroundBrush}"
+                                                    Click="ToggleNewPasswordButton_Click"/>
+                                        </Grid>
                                     </StackPanel>
 
                                     <!-- Confirm new password -->
@@ -461,9 +499,28 @@
                                         <TextBlock Text="Confirm New Password"
                                                    FontSize="13" FontWeight="SemiBold"
                                                    Foreground="{ThemeResource PrimaryTextBrush}"/>
-                                        <PasswordBox x:Name="ChangeConfirmPasswordBox"
+                                        <Grid>
+                                            <PasswordBox x:Name="ChangeConfirmPasswordBox"
+                                                         PlaceholderText="Repeat new password"
+                                                         PasswordRevealMode="Hidden"
+                                                         Padding="12,0,74,0"
+                                                         CornerRadius="12"/>
+                                            <TextBox x:Name="ChangeConfirmPasswordTextBox"
                                                      PlaceholderText="Repeat new password"
+                                                     Visibility="Collapsed"
+                                                     Padding="12,0,74,0"
                                                      CornerRadius="12"/>
+                                            <Button x:Name="ToggleConfirmPasswordButton"
+                                                    Content="Show"
+                                                    Width="58" Height="32"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,8,0"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Foreground="{ThemeResource MutedButtonForegroundBrush}"
+                                                    Click="ToggleConfirmPasswordButton_Click"/>
+                                        </Grid>
                                     </StackPanel>
 
                                     <Button Content="Update Password"
@@ -481,7 +538,7 @@
                                     BorderBrush="{ThemeResource InputBorderBrush}" BorderThickness="1">
                                 <StackPanel Spacing="14">
                                     <StackPanel Spacing="2">
-                                        <TextBlock Text="🎙  Voice Passphrase"
+                                        <TextBlock Text="Voice Passphrase"
                                                    FontSize="15" FontWeight="SemiBold"
                                                    Foreground="{ThemeResource PrimaryTextBrush}"/>
                                         <TextBlock Text="Change the phrase you speak to verify your voice."
@@ -550,7 +607,7 @@
                                     BorderBrush="{ThemeResource InputBorderBrush}" BorderThickness="1">
                                 <StackPanel Spacing="14">
                                     <StackPanel Spacing="2">
-                                        <TextBlock Text="📷  Hand Gesture"
+                                        <TextBlock Text="Hand Gesture"
                                                    FontSize="15" FontWeight="SemiBold"
                                                    Foreground="{ThemeResource PrimaryTextBrush}"/>
                                         <TextBlock Text="Re-register your hand gesture for camera verification."
@@ -564,7 +621,7 @@
                                             BorderBrush="{ThemeResource CardBorderBrush}" BorderThickness="1">
                                         <StackPanel VerticalAlignment="Center"
                                                     HorizontalAlignment="Center" Spacing="6">
-                                            <TextBlock Text="📷" FontSize="28"
+                                            <TextBlock Text="Camera" FontSize="28"
                                                        HorizontalAlignment="Center"/>
                                             <TextBlock Text="Gesture re-registration coming soon"
                                                        FontSize="13" FontWeight="SemiBold"
@@ -582,6 +639,44 @@
                                             BorderThickness="2"
                                             Foreground="{ThemeResource MutedButtonForegroundBrush}"
                                             FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Hint fields -->
+                            <Border CornerRadius="16" Padding="18"
+                                    Background="{ThemeResource InputBackgroundBrush}"
+                                    BorderBrush="{ThemeResource InputBorderBrush}" BorderThickness="1">
+                                <StackPanel Spacing="14">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="Hints"
+                                                   FontSize="15" FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                        <TextBlock Text="Optional reminders shown during verification."
+                                                   FontSize="13" TextWrapping="Wrap"
+                                                   Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                    </StackPanel>
+
+                                    <TextBox x:Name="ChangePasswordHintBox"
+                                             Header="Password hint"
+                                             PlaceholderText="e.g. where you wrote it down"
+                                             CornerRadius="12"/>
+
+                                    <TextBox x:Name="ChangePassphraseHintBox"
+                                             Header="Phrase"
+                                             PlaceholderText="e.g. the scene your phrase reminds you of"
+                                             CornerRadius="12"/>
+
+                                    <TextBox x:Name="ChangeGestureHintBox"
+                                             Header="Gesture"
+                                             PlaceholderText="e.g. swipe direction or hand cue"
+                                             CornerRadius="12"/>
+
+                                    <Button Content="Save Hints"
+                                            HorizontalAlignment="Stretch"
+                                            Height="44" CornerRadius="12"
+                                            Background="{ThemeResource AccentBrush}"
+                                            Foreground="White" FontWeight="SemiBold"
+                                            Click="SaveHintsButton_Click"/>
                                 </StackPanel>
                             </Border>
 

@@ -236,6 +236,11 @@
                                     Style="{StaticResource PrimaryActionButtonStyle}"
                                     Click="StartListeningButton_Click"/>
 
+                            <Button x:Name="ShowHintButton"
+                                    Content="Show Hint"
+                                    Style="{StaticResource SecondaryActionButtonStyle}"
+                                    Click="ShowHintButton_Click"/>
+
                             <TextBlock Text="or"
                                        FontSize="15"
                                        HorizontalAlignment="Center"

@@ -2,9 +2,11 @@ using GestureVault.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage;
 using System;
+using System.Linq;
 
 namespace GestureVault
 {
@@ -12,13 +14,17 @@ namespace GestureVault
     {
         private GestureService? _gestureService;
         private bool _isTransitioning = false;
-        private string _expectedGesture = "SWIPE_RIGHT";
+        private string[] _gestureSequence = { "SWIPE_RIGHT", "SWIPE_RIGHT", "SWIPE_RIGHT" };
+        private int _gestureIndex = 0;
+        private bool _waitingForNextGesture = false;
+        private string _expectedGesture => _gestureSequence[_gestureIndex];
 
         public GestureVerificationWindow()
         {
             this.InitializeComponent();
             SetWindowSizeAndCenter();
             LoadExpectedGesture();
+            UpdateGestureStepUi();
             InitializeGestureService();
         }
 
@@ -34,8 +40,23 @@ namespace GestureVault
 
         private void LoadExpectedGesture()
         {
-            _expectedGesture = ApplicationData.Current.LocalSettings
-                .Values["RegisteredGesture"] as string ?? "SWIPE_RIGHT";
+            var settings = ApplicationData.Current.LocalSettings;
+            string? savedSequence = settings.Values["RegisteredGestureSequence"] as string;
+            if (!string.IsNullOrWhiteSpace(savedSequence))
+            {
+                var gestures = savedSequence
+                    .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Take(3)
+                    .ToArray();
+                if (gestures.Length == 3)
+                {
+                    _gestureSequence = gestures;
+                    return;
+                }
+            }
+
+            string savedGesture = settings.Values["RegisteredGesture"] as string ?? "SWIPE_RIGHT";
+            _gestureSequence = new[] { savedGesture, savedGesture, savedGesture };
         }
 
         private void InitializeGestureService()
@@ -45,7 +66,7 @@ namespace GestureVault
             // ── Camera preview frames ─────────────────────────────────────────
             _gestureService.FrameReady += async (s, frame) =>
             {
-                if (_isTransitioning) return;
+                if (_isTransitioning || _waitingForNextGesture) return;
 
                 try
                 {
@@ -94,24 +115,14 @@ namespace GestureVault
 
         private void GestureMatched()
         {
-            GestureStatusText.Text = "Gesture matched! ✓";
+            _waitingForNextGesture = true;
+            GestureStatusText.Text = $"{GestureStepLabel()} recognized";
             DetectedGestureText.Text = $"Correct gesture: {GestureDirectionToEmoji(_expectedGesture)}";
-            StartCameraButton.Content = "Access Granted ✓";
-            StartCameraButton.IsEnabled = false;
-
-            // Delay then navigate
-            var timer = DispatcherQueue.CreateTimer();
-            timer.Interval = System.TimeSpan.FromSeconds(1.2);
-            timer.IsRepeating = false;
-            timer.Tick += (_, _) =>
-            {
-                if (_isTransitioning) return;
-                _isTransitioning = true;
-                NavigateToVault();
-            };
-            timer.Start();
+            NextGestureButton.Content = _gestureIndex == _gestureSequence.Length - 1
+                ? "Unlock Vault"
+                : "Next Gesture";
+            NextGestureButton.IsEnabled = true;
         }
-
         private void GestureMismatched(string detected)
         {
             string expectedEmoji = GestureDirectionToEmoji(_expectedGesture);
@@ -132,6 +143,23 @@ namespace GestureVault
             "SWIPE_DOWN" => "👇 Swipe Down",
             _ => direction
         };
+
+        private string GestureStepLabel() => _gestureIndex switch
+        {
+            0 => "First gesture",
+            1 => "Second gesture",
+            _ => "Final gesture"
+        };
+
+        private void UpdateGestureStepUi()
+        {
+            GestureStepText.Text = $"{GestureStepLabel()} of 3";
+            GestureStatusText.Text = $"Do {GestureStepLabel().ToLowerInvariant()}";
+            DetectedGestureText.Text = $"Show: {GestureDirectionToEmoji(_expectedGesture)}";
+            NextGestureButton.Content = "Next Gesture";
+            NextGestureButton.IsEnabled = false;
+            _waitingForNextGesture = false;
+        }
 
         private void NavigateToVault()
         {
@@ -160,8 +188,7 @@ namespace GestureVault
 
                     // Hide placeholder, show camera
                     CameraPlaceholder.Visibility = Visibility.Collapsed;
-                    GestureStatusText.Text = "Scanning for gesture...";
-                    DetectedGestureText.Text = $"Show your registered gesture: {GestureDirectionToEmoji(_expectedGesture)}";
+                    UpdateGestureStepUi();
                     StartCameraButton.Content = "Stop Camera";
                 }
                 catch (Exception ex)
@@ -179,8 +206,29 @@ namespace GestureVault
                 CameraPreview.Source = null;
                 GestureStatusText.Text = "Camera stopped";
                 DetectedGestureText.Text = "Waiting for hand gesture...";
+                NextGestureButton.IsEnabled = false;
+                _waitingForNextGesture = false;
                 StartCameraButton.Content = "Start Camera";
             }
+        }
+
+        private void NextGestureButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isTransitioning || !_waitingForNextGesture) return;
+
+            if (_gestureIndex >= _gestureSequence.Length - 1)
+            {
+                _isTransitioning = true;
+                GestureStatusText.Text = "All gestures matched";
+                DetectedGestureText.Text = "Access granted. Opening vault...";
+                StartCameraButton.IsEnabled = false;
+                NextGestureButton.IsEnabled = false;
+                NavigateToVault();
+                return;
+            }
+
+            _gestureIndex++;
+            UpdateGestureStepUi();
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -208,6 +256,21 @@ namespace GestureVault
             _gestureService = null;
 
             NavigateToVault();
+        }
+
+        private async void ShowHintButton_Click(object sender, RoutedEventArgs e)
+        {
+            string hint = ApplicationData.Current.LocalSettings.Values["GestureHint"] as string ?? string.Empty;
+            var dialog = new ContentDialog
+            {
+                Title = "Gesture hint",
+                Content = string.IsNullOrWhiteSpace(hint)
+                    ? "No gesture hint has been saved."
+                    : hint,
+                CloseButtonText = "OK",
+                XamlRoot = this.Content.XamlRoot
+            };
+            await dialog.ShowAsync();
         }
 
     }
