@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -245,6 +245,27 @@ namespace GestureVault.Services
             return tempPath;
         }
 
+
+        public string RestoreFileToOriginalPath(VaultFile vaultFile)
+        {
+            string? originalPath = vaultFile.OriginalPath;
+            if (string.IsNullOrWhiteSpace(originalPath))
+                originalPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), vaultFile.FileName);
+
+            string directory = Path.GetDirectoryName(originalPath)!;
+            Directory.CreateDirectory(directory);
+
+            string destination = originalPath;
+            if (File.Exists(destination))
+            {
+                string name = Path.GetFileNameWithoutExtension(destination);
+                string ext = Path.GetExtension(destination);
+                destination = Path.Combine(directory, $"{name} (restored {DateTime.Now:yyyyMMdd-HHmmss}){ext}");
+            }
+
+            EncryptionService.DecryptFile(vaultFile.StoredAt, destination, _masterPassword);
+            return destination;
+        }
         public void RemoveFileFromItem(VaultFile vaultFile)
         {
             EncryptionService.SecureDeleteTemp(vaultFile.StoredAt);

@@ -35,17 +35,16 @@ namespace GestureVault
                 MasterPasswordBox.Password = PasswordTextBox.Text;
                 MasterPasswordBox.Visibility = Visibility.Visible;
                 PasswordTextBox.Visibility = Visibility.Collapsed;
-                EyeIcon.Text = "👁";
             }
             else
             {
                 PasswordTextBox.Text = MasterPasswordBox.Password;
                 PasswordTextBox.Visibility = Visibility.Visible;
                 MasterPasswordBox.Visibility = Visibility.Collapsed;
-                EyeIcon.Text = "🙈";
             }
 
             _isPasswordVisible = !_isPasswordVisible;
+            EyeIcon.Text = _isPasswordVisible ? "\uE8F5" : "\uE890";
         }
 
         // ── Continue button ───────────────────────────────────────────────────

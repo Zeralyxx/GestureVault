@@ -30,6 +30,18 @@ namespace GestureVault
         private VaultItemType? _activeFilter = null;
         private string _searchQuery = string.Empty;
         private VaultItem? _selectedItem = null;
+        private bool _isEditingItem = false;
+        private bool _itemPasswordVisible = false;
+        private TextBox? _editTitleBox;
+        private TextBox? _editUsernameBox;
+        private TextBox? _editPasswordBox;
+        private TextBox? _editUrlBox;
+        private TextBox? _editNoteBox;
+        private TextBox? _editDescriptionBox;
+        private const string IconShowGlyph = "\uE890";
+        private const string IconHideGlyph = "\uE8F5";
+        private const string IconCopyGlyph = "\uE8C8";
+        private const string IconCheckGlyph = "\uE73E";
 
         // Tracks temp files open so we can clean them on lock
         private readonly List<string> _openTempFiles = new();
@@ -113,7 +125,7 @@ namespace GestureVault
 
         private Border BuildItemCard(VaultItem item)
         {
-            string itemBadge = item.Type switch
+            string code = item.Type switch
             {
                 VaultItemType.Password => "PW",
                 VaultItemType.Note => "NT",
@@ -123,12 +135,9 @@ namespace GestureVault
 
             string subtitle = item.Type switch
             {
-                VaultItemType.Password =>
-                    $"Password | Updated {item.UpdatedAt}",
-                VaultItemType.Note =>
-                    $"Secure Note | Updated {item.UpdatedAt}",
-                VaultItemType.Document =>
-                    $"Files | {item.Files.Count} file(s) | {item.UpdatedAt}",
+                VaultItemType.Password => $"Password | Updated {item.UpdatedAt}",
+                VaultItemType.Note => $"Secure Note | Updated {item.UpdatedAt}",
+                VaultItemType.Document => $"Files | {item.Files.Count(f => !f.IsDeleted)} file(s) | {item.UpdatedAt}",
                 _ => item.UpdatedAt
             };
 
@@ -136,30 +145,37 @@ namespace GestureVault
             {
                 Content = "Open",
                 Width = 90,
-                Style = (Style)((FrameworkElement)this.Content)
-                              .Resources["CardButtonStyle"]
+                Style = (Style)((FrameworkElement)this.Content).Resources["CardButtonStyle"]
             };
             openBtn.Click += (s, e) => OpenItem(item);
 
-            var grid = new Grid();
-            grid.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(
-                new ColumnDefinition { Width = GridLength.Auto });
+            var grid = new Grid { ColumnSpacing = 16 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            var icon = new TextBlock
+            var typeCode = new TextBlock
             {
-                Text = itemBadge,
-                FontSize = 18,
+                Text = code,
+                FontSize = 16,
                 FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 14, 0)
+                Foreground = new SolidColorBrush(PrimaryText)
             };
-            Grid.SetColumn(icon, 0);
+            Grid.SetColumn(typeCode, 0);
 
-            var info = new StackPanel();
+            var divider = new Border
+            {
+                Width = 1,
+                Height = 42,
+                Background = new SolidColorBrush(CardBorder),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(divider, 1);
+
+            var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             info.Children.Add(new TextBlock
             {
                 Text = item.Title,
@@ -173,10 +189,11 @@ namespace GestureVault
                 FontSize = 13,
                 Foreground = new SolidColorBrush(SecondaryText)
             });
-            Grid.SetColumn(info, 1);
-            Grid.SetColumn(openBtn, 2);
+            Grid.SetColumn(info, 2);
+            Grid.SetColumn(openBtn, 3);
 
-            grid.Children.Add(icon);
+            grid.Children.Add(typeCode);
+            grid.Children.Add(divider);
             grid.Children.Add(info);
             grid.Children.Add(openBtn);
 
@@ -191,7 +208,6 @@ namespace GestureVault
             };
         }
 
-        // ══════════════════════════════════════════════════════════════════════
         // ADD ITEM
         // ══════════════════════════════════════════════════════════════════════
         private void AddItemButton_Click(object sender, RoutedEventArgs e)
@@ -200,6 +216,12 @@ namespace GestureVault
             ItemTitleBox.Text = string.Empty;
             ItemUsernameBox.Text = string.Empty;
             ItemPasswordBox.Password = string.Empty;
+            ItemPasswordTextBox.Text = string.Empty;
+            ItemPasswordTextBox.Visibility = Visibility.Collapsed;
+            ItemPasswordBox.Visibility = Visibility.Visible;
+            ItemPasswordEyeIcon.Text = IconShowGlyph;
+            ItemPasswordCopyIcon.Text = IconCopyGlyph;
+            _itemPasswordVisible = false;
             ItemUrlBox.Text = string.Empty;
             NoteContentBox.Text = string.Empty;
             ItemDescriptionBox.Text = string.Empty;
@@ -215,6 +237,38 @@ namespace GestureVault
         private readonly List<(string sourcePath, string fileName)>
             _pendingFiles = new();
 
+
+        private void ToggleItemPassword_Click(object sender, RoutedEventArgs e)
+        {
+            _itemPasswordVisible = !_itemPasswordVisible;
+            if (_itemPasswordVisible)
+            {
+                ItemPasswordTextBox.Text = ItemPasswordBox.Password;
+                ItemPasswordTextBox.Visibility = Visibility.Visible;
+                ItemPasswordBox.Visibility = Visibility.Collapsed;
+                ItemPasswordEyeIcon.Text = IconHideGlyph;
+            }
+            else
+            {
+                ItemPasswordBox.Password = ItemPasswordTextBox.Text;
+                ItemPasswordBox.Visibility = Visibility.Visible;
+                ItemPasswordTextBox.Visibility = Visibility.Collapsed;
+                ItemPasswordEyeIcon.Text = IconShowGlyph;
+            }
+        }
+
+        private async void CopyItemPassword_Click(object sender, RoutedEventArgs e)
+        {
+            string value = _itemPasswordVisible ? ItemPasswordTextBox.Text : ItemPasswordBox.Password;
+            if (string.IsNullOrEmpty(value)) return;
+
+            var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            dataPackage.SetText(value);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+            ItemPasswordCopyIcon.Text = IconCheckGlyph;
+            await Task.Delay(1200);
+            ItemPasswordCopyIcon.Text = IconCopyGlyph;
+        }
         private void ItemTypeCombo_SelectionChanged(
             object sender, SelectionChangedEventArgs e)
         {
@@ -401,7 +455,7 @@ namespace GestureVault
                 case 0:
                     item.Type = VaultItemType.Password;
                     item.Username = ItemUsernameBox.Text.Trim();
-                    item.Password = ItemPasswordBox.Password;
+                    item.Password = _itemPasswordVisible ? ItemPasswordTextBox.Text : ItemPasswordBox.Password;
                     item.Url = ItemUrlBox.Text.Trim();
                     break;
 
@@ -457,7 +511,18 @@ namespace GestureVault
         private void OpenItem(VaultItem item)
         {
             _selectedItem = item;
-            ViewItemTitle.Text = item.Title;
+            _isEditingItem = false;
+            RenderSelectedItem();
+            ViewItemOverlay.Visibility = Visibility.Visible;
+            ResetIdleTimer();
+        }
+
+        private void RenderSelectedItem()
+        {
+            if (_selectedItem == null) return;
+
+            var item = _selectedItem;
+            ViewItemTitle.Text = _isEditingItem ? "Edit item" : item.Title;
             ViewItemType.Text = item.Type switch
             {
                 VaultItemType.Password => "Password",
@@ -467,33 +532,32 @@ namespace GestureVault
             };
 
             ViewItemContent.Children.Clear();
+            AddEditableRow("Title", item.Title, textBox => _editTitleBox = textBox, !_isEditingItem);
 
             switch (item.Type)
             {
                 case VaultItemType.Password:
-                    AddViewRow("Username", item.Username ?? "-");
-                    AddViewRow("Password", item.Password ?? "-",
-                               isPassword: true);
-                    if (!string.IsNullOrEmpty(item.Url))
-                        AddViewRow("Website", item.Url);
+                    AddEditableRow("Username", item.Username ?? string.Empty, textBox => _editUsernameBox = textBox, !_isEditingItem);
+                    AddEditableRow("Password", item.Password ?? string.Empty, textBox => _editPasswordBox = textBox, !_isEditingItem, isPassword: true);
+                    AddEditableRow("Website", item.Url ?? string.Empty, textBox => _editUrlBox = textBox, !_isEditingItem);
                     break;
 
                 case VaultItemType.Note:
-                    AddViewRow("Note", item.NoteContent ?? "-");
+                    AddEditableRow("Note", item.NoteContent ?? string.Empty, textBox => _editNoteBox = textBox, !_isEditingItem, multiline: true);
                     break;
 
                 case VaultItemType.Document:
-                    AddViewRow("Description", item.Description ?? "-");
+                    AddEditableRow("Description", item.Description ?? string.Empty, textBox => _editDescriptionBox = textBox, !_isEditingItem, multiline: true);
                     BuildFilesFileList(item);
                     break;
             }
 
             AddViewRow("Last updated", item.UpdatedAt);
-            ViewItemOverlay.Visibility = Visibility.Visible;
-            ResetIdleTimer();
+            DeleteItemButton.Content = _isEditingItem ? "Cancel" : "Delete";
+            CloseViewItemButton.Content = _isEditingItem ? "Save" : "Edit";
         }
 
-        // ── Files file list inside the view overlay ────────────────────────
+        // Files file list inside the view overlay ────────────────────────
         private void BuildFilesFileList(VaultItem item)
         {
             // Section header + Add Files button
@@ -505,7 +569,7 @@ namespace GestureVault
 
             headerGrid.Children.Add(new TextBlock
             {
-                Text = $"Files ({item.Files.Count})",
+                Text = $"Files ({item.Files.Count(f => !f.IsDeleted)})",
                 FontSize = 14,
                 FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -536,7 +600,10 @@ namespace GestureVault
 
             AddImagePreviewStrip(item);
 
-            if (item.Files.Count == 0)
+            var activeFiles = item.Files.Where(f => !f.IsDeleted).ToList();
+            var removedFiles = item.Files.Where(f => f.IsDeleted).ToList();
+
+            if (activeFiles.Count == 0)
             {
                 ViewItemContent.Children.Add(new TextBlock
                 {
@@ -550,8 +617,22 @@ namespace GestureVault
                 return;
             }
 
-            foreach (var vf in item.Files)
+            foreach (var vf in activeFiles)
                 ViewItemContent.Children.Add(BuildFileRow(item, vf));
+
+            if (removedFiles.Count > 0)
+            {
+                ViewItemContent.Children.Add(new TextBlock
+                {
+                    Text = "Removed files",
+                    FontSize = 13,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    Foreground = new SolidColorBrush(SecondaryText),
+                    Margin = new Thickness(0, 8, 0, 0)
+                });
+                foreach (var vf in removedFiles)
+                    ViewItemContent.Children.Add(BuildRemovedFileRow(item, vf));
+            }
         }
 
         private Border BuildFileRow(VaultItem item, VaultFile vf)
@@ -617,8 +698,7 @@ namespace GestureVault
                 };
                 if (await confirm.ShowAsync() == ContentDialogResult.Primary)
                 {
-                    _storage.RemoveFileFromItem(vf);
-                    item.Files.Remove(vf);
+                    vf.IsDeleted = true;
                     item.UpdatedAt = DateTime.Now.ToString("MMM dd, yyyy");
                     SaveItems();
                     RefreshDisplay();
@@ -725,9 +805,161 @@ namespace GestureVault
             ResetIdleTimer();
         }
 
+        private Border BuildRemovedFileRow(VaultItem item, VaultFile vf)
+        {
+            var grid = new Grid { ColumnSpacing = 12 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var preview = BuildFilePreview(vf, 56, 42);
+            preview.Opacity = 0.45;
+            Grid.SetColumn(preview, 0);
+
+            var namePanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            namePanel.Children.Add(new TextBlock
+            {
+                Text = vf.FileName,
+                FontSize = 14,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = new SolidColorBrush(SecondaryText)
+            });
+            namePanel.Children.Add(new TextBlock
+            {
+                Text = "Removed from vault list; encrypted copy is still available",
+                FontSize = 11,
+                Foreground = new SolidColorBrush(SecondaryText)
+            });
+            Grid.SetColumn(namePanel, 1);
+
+            var restoreBtn = new Button
+            {
+                Content = "Restore",
+                Width = 78,
+                Height = 32,
+                Style = (Style)((FrameworkElement)this.Content).Resources["CardButtonStyle"]
+            };
+                        restoreBtn.Click += async (s, e) =>
+            {
+                try
+                {
+                    string restoredPath = _storage.RestoreFileToOriginalPath(vf);
+                    await ShowDialog("File restored", $"Decrypted copy restored to:\n{restoredPath}");
+                    vf.IsDeleted = false;
+                    item.UpdatedAt = DateTime.Now.ToString("MMM dd, yyyy");
+                    SaveItems();
+                    RefreshDisplay();
+                    OpenItem(item);
+                }
+                catch (Exception ex)
+                {
+                    await ShowDialog("Restore failed", ex.Message);
+                }
+            };
+            Grid.SetColumn(restoreBtn, 2);
+
+            var permanentBtn = new Button
+            {
+                Content = "Delete",
+                Width = 78,
+                Height = 32,
+                Background = new SolidColorBrush(Colors.Transparent),
+                BorderThickness = new Thickness(0),
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 229, 57, 53))
+            };
+            permanentBtn.Click += async (s, e) =>
+            {
+                var confirm = new ContentDialog
+                {
+                    Title = "Delete permanently",
+                    Content = $"Permanently delete \"{vf.FileName}\"? This cannot be restored.",
+                    PrimaryButtonText = "Delete permanently",
+                    CloseButtonText = "Cancel",
+                    XamlRoot = this.Content.XamlRoot
+                };
+                if (await confirm.ShowAsync() == ContentDialogResult.Primary)
+                {
+                    _storage.RemoveFileFromItem(vf);
+                    item.Files.Remove(vf);
+                    item.UpdatedAt = DateTime.Now.ToString("MMM dd, yyyy");
+                    SaveItems();
+                    RefreshDisplay();
+                    OpenItem(item);
+                }
+            };
+            Grid.SetColumn(permanentBtn, 3);
+
+            grid.Children.Add(preview);
+            grid.Children.Add(namePanel);
+            grid.Children.Add(restoreBtn);
+            grid.Children.Add(permanentBtn);
+
+            return new Border
+            {
+                Padding = new Thickness(14, 10, 14, 10),
+                CornerRadius = new CornerRadius(12),
+                BorderThickness = new Thickness(1),
+                BorderBrush = new SolidColorBrush(CardBorder),
+                Background = new SolidColorBrush(Color.FromArgb(255, 250, 250, 250)),
+                Child = grid,
+                Margin = new Thickness(0, 0, 0, 6)
+            };
+        }
+
+        private void AddEditableRow(string label, string value, Action<TextBox> bind, bool readOnly, bool isPassword = false, bool multiline = false)
+        {
+            if (readOnly)
+            {
+                AddViewRow(label, value, isPassword);
+                return;
+            }
+
+            var box = new TextBox
+            {
+                Header = label,
+                Text = value,
+                CornerRadius = new CornerRadius(12),
+                AcceptsReturn = multiline,
+                TextWrapping = multiline ? TextWrapping.Wrap : TextWrapping.NoWrap,
+                Height = multiline ? 120 : double.NaN
+            };
+            bind(box);
+            ViewItemContent.Children.Add(box);
+        }
+
+        private void SaveEditedItem()
+        {
+            if (_selectedItem == null) return;
+            var item = _selectedItem;
+
+            item.Title = _editTitleBox?.Text.Trim() ?? item.Title;
+            switch (item.Type)
+            {
+                case VaultItemType.Password:
+                    item.Username = _editUsernameBox?.Text.Trim();
+                    item.Password = _editPasswordBox?.Text ?? item.Password;
+                    item.Url = _editUrlBox?.Text.Trim();
+                    break;
+                case VaultItemType.Note:
+                    item.NoteContent = _editNoteBox?.Text.Trim();
+                    break;
+                case VaultItemType.Document:
+                    item.Description = _editDescriptionBox?.Text.Trim();
+                    break;
+            }
+
+            item.UpdatedAt = DateTime.Now.ToString("MMM dd, yyyy");
+            SaveItems();
+            RefreshDisplay();
+            _isEditingItem = false;
+            RenderSelectedItem();
+        }
         private VaultFile ImportFileIntoVault(VaultItem item, string sourcePath, string? displayName = null)
         {
             var vf = _storage.AddFileToItem(item.Id, sourcePath);
+            vf.OriginalPath = sourcePath;
             if (!string.IsNullOrWhiteSpace(displayName))
                 vf.FileName = displayName;
 
@@ -898,7 +1130,7 @@ namespace GestureVault
 
                 var revealBtn = new Button
                 {
-                    Content = "Show",
+                    Content = IconGlyph(IconShowGlyph),
                     Background = new SolidColorBrush(Colors.Transparent),
                     BorderThickness = new Thickness(0),
                     Padding = new Thickness(6),
@@ -909,13 +1141,13 @@ namespace GestureVault
                 {
                     revealed = !revealed;
                     pwText.Text = revealed ? value : new string('\u2022', value.Length);
-                    revealBtn.Content = revealed ? "Hide" : "Show";
+                    revealBtn.Content = IconGlyph(revealed ? IconHideGlyph : IconShowGlyph);
                 };
                 Grid.SetColumn(revealBtn, 1);
 
                 var copyBtn = new Button
                 {
-                    Content = "Copy",
+                    Content = IconGlyph(IconCopyGlyph),
                     Background = new SolidColorBrush(Colors.Transparent),
                     BorderThickness = new Thickness(0),
                     Padding = new Thickness(6),
@@ -928,9 +1160,9 @@ namespace GestureVault
                     Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
 
                     // Brief visual feedback
-                    copyBtn.Content = "Copied";
+                    copyBtn.Content = IconGlyph(IconCheckGlyph);
                     await System.Threading.Tasks.Task.Delay(1500);
-                    copyBtn.Content = "Copy";
+                    copyBtn.Content = IconGlyph(IconCopyGlyph);
                 };
                 Grid.SetColumn(copyBtn, 2);
 
@@ -969,11 +1201,17 @@ namespace GestureVault
         {
             if (_selectedItem == null) return;
 
+            if (_isEditingItem)
+            {
+                _isEditingItem = false;
+                RenderSelectedItem();
+                return;
+            }
+
             var confirm = new ContentDialog
             {
                 Title = "Delete item",
-                Content = $"Permanently delete \"{_selectedItem.Title}\"? " +
-                                    $"All attached files will be securely erased.",
+                Content = $"Permanently delete \"{_selectedItem.Title}\"? All attached files will be erased.",
                 PrimaryButtonText = "Delete",
                 CloseButtonText = "Cancel",
                 XamlRoot = this.Content.XamlRoot
@@ -981,7 +1219,6 @@ namespace GestureVault
 
             if (await confirm.ShowAsync() == ContentDialogResult.Primary)
             {
-                // Delete encrypted files from disk if file
                 if (_selectedItem.Type == VaultItemType.Document)
                     _storage.DeleteItem(_selectedItem);
 
@@ -994,10 +1231,25 @@ namespace GestureVault
             ResetIdleTimer();
         }
 
-        private void CloseViewItem_Click(object sender, RoutedEventArgs e)
+
+        private void CloseViewOverlay_Click(object sender, RoutedEventArgs e)
         {
+            _isEditingItem = false;
             ViewItemOverlay.Visibility = Visibility.Collapsed;
             _selectedItem = null;
+            ResetIdleTimer();
+        }
+        private void CloseViewItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isEditingItem)
+            {
+                SaveEditedItem();
+                ResetIdleTimer();
+                return;
+            }
+
+            _isEditingItem = true;
+            RenderSelectedItem();
             ResetIdleTimer();
         }
 
@@ -1123,7 +1375,7 @@ namespace GestureVault
         {
             passwordBox.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
             textBox.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-            button.Content = visible ? "Hide" : "Show";
+            button.Content = IconGlyph(visible ? IconHideGlyph : IconShowGlyph);
         }
 
         private async void ChangePasswordButton_Click(object s, RoutedEventArgs e)
@@ -1375,6 +1627,15 @@ namespace GestureVault
         // ══════════════════════════════════════════════════════════════════════
         // THEME HELPERS
         // ══════════════════════════════════════════════════════════════════════
+
+        private static TextBlock IconGlyph(string glyph, double size = 16) => new()
+        {
+            Text = glyph,
+            FontFamily = new FontFamily("Segoe MDL2 Assets"),
+            FontSize = size,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
         private Color CardBackground =>
             _isLightMode
                 ? Color.FromArgb(255, 255, 255, 255)

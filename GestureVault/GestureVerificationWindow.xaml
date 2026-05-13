@@ -183,6 +183,12 @@
                                 </StackPanel>
                             </Border>
 
+
+                            <Button x:Name="RedoGestureButton"
+                                    Content="Redo Gesture"
+                                    Style="{StaticResource SecondaryActionButtonStyle}"
+                                    IsEnabled="False"
+                                    Click="RedoGestureButton_Click"/>
                             <Button x:Name="NextGestureButton"
                                     Content="Next Gesture"
                                     Style="{StaticResource SecondaryActionButtonStyle}"

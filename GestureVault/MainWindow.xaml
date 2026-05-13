@@ -180,7 +180,7 @@
                                         Background="{ThemeResource InputBackgroundBrush}"/>
 
                                     <!-- Visible text version -->
-                                    <TextBox x:Name="PasswordTextBox"
+                                    <TextBox x:Name="PasswordTextBox" IsReadOnly="True"
                                          Visibility="Collapsed"
                                          Height="28"
                                          Margin="18,0,60,0"
@@ -212,11 +212,7 @@
                                         Background="Transparent"
                                         BorderThickness="0"
                                         Click="TogglePasswordButton_Click">
-                                        <TextBlock x:Name="EyeIcon"
-                                           Text="👁"
-                                           FontSize="18"
-                                           VerticalAlignment="Center"
-                                           HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="EyeIcon" Text="&#xE890;" FontFamily="Segoe MDL2 Assets" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                     </Button>
                                 </Grid>
                             </StackPanel>

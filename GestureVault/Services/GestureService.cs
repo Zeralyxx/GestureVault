@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Dispatching;
+using Microsoft.UI.Dispatching;
 using OpenCvSharp;
 using System;
 using System.Threading;
@@ -30,8 +30,14 @@ namespace GestureVault.Services
 
         // Motion tracking — stores last 20 hand centroids
         private readonly Queue<Point> _centroids = new(20);
-        private const int QueueCapacity = 20;
-        private const int MinDeltaPixels = 60; // minimum movement to count as a swipe
+        private const int QueueCapacity = 18;
+        private const int MinDeltaPixels = 130;
+        private const double DominanceRatio = 1.35;
+        private const int GestureCooldownMs = 1200;
+        private const int PalmReadyFramesRequired = 8;
+        private bool _armedForGesture = false;
+        private int _palmReadyFrames = 0;
+        private DateTime _lastGestureAt = DateTime.MinValue;
 
         public GestureService(DispatcherQueue dispatcher)
         {
@@ -80,6 +86,8 @@ namespace GestureVault.Services
             _cts = null;
             _captureTask = null;
             _centroids.Clear();
+            _armedForGesture = false;
+            _palmReadyFrames = 0;
         }
 
         // ── Main capture loop (runs on background thread) ─────────────────────
@@ -106,72 +114,105 @@ namespace GestureVault.Services
                     previewClone.Dispose();
                 });
 
-                // 2. Try to find a hand centroid in this frame
-                var centroid = FindHandCentroid(frame);
+                var observation = FindHandObservation(frame);
 
-                if (centroid.HasValue)
+                if (observation.HasValue)
                 {
-                    EnqueueCentroid(centroid.Value);
-                    AnalyzeMotion();
+                    if (!_armedForGesture)
+                    {
+                        if (observation.Value.IsPalmReady)
+                        {
+                            _palmReadyFrames++;
+                            if (_palmReadyFrames >= PalmReadyFramesRequired)
+                            {
+                                _armedForGesture = true;
+                                _centroids.Clear();
+                            }
+                        }
+                        else
+                        {
+                            _palmReadyFrames = 0;
+                        }
+                    }
+                    else
+                    {
+                        EnqueueCentroid(observation.Value.Centroid);
+                        AnalyzeMotion();
+                    }
                 }
                 else
                 {
-                    // No hand visible — reset tracking
                     _centroids.Clear();
+                    _armedForGesture = false;
+                    _palmReadyFrames = 0;
                 }
 
                 Thread.Sleep(33); // ~30 FPS
             }
         }
 
-        // ── Hand detection via skin-tone HSV masking ──────────────────────────
-        private Point? FindHandCentroid(Mat frame)
+        private readonly struct HandObservation
+        {
+            public HandObservation(Point centroid, bool isPalmReady)
+            {
+                Centroid = centroid;
+                IsPalmReady = isPalmReady;
+            }
+
+            public Point Centroid { get; }
+            public bool IsPalmReady { get; }
+        }
+
+        private HandObservation? FindHandObservation(Mat frame)
         {
             using var hsv = new Mat();
             using var mask = new Mat();
 
-            // Convert to HSV colour space
             Cv2.CvtColor(frame, hsv, ColorConversionCodes.BGR2HSV);
 
-            // Skin tone range in HSV
             var lower = new Scalar(0, 20, 70);
             var upper = new Scalar(20, 255, 255);
             Cv2.InRange(hsv, lower, upper, mask);
 
-            // Clean up noise
-            Cv2.GaussianBlur(mask, mask, new Size(5, 5), 0);
+            Cv2.GaussianBlur(mask, mask, new Size(7, 7), 0);
+            using var kernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(7, 7));
+            Cv2.MorphologyEx(mask, mask, MorphTypes.Open, kernel);
+            Cv2.MorphologyEx(mask, mask, MorphTypes.Close, kernel);
 
-            // Find contours
             Cv2.FindContours(mask, out Point[][] contours, out _,
                 RetrievalModes.External, ContourApproximationModes.ApproxSimple);
 
             if (contours.Length == 0) return null;
 
-            // Find the largest contour (most likely the hand)
             double maxArea = 0;
             Point[]? largest = null;
-            foreach (var c in contours)
+            foreach (var contour in contours)
             {
-                double area = Cv2.ContourArea(c);
+                double area = Cv2.ContourArea(contour);
                 if (area > maxArea)
                 {
                     maxArea = area;
-                    largest = c;
+                    largest = contour;
                 }
             }
 
-            // Ignore very small blobs (noise)
-            if (largest == null || maxArea < 3000) return null;
+            if (largest == null || maxArea < 7000) return null;
 
-            // Calculate centroid using image moments
-            var m = Cv2.Moments(largest);
-            if (m.M00 == 0) return null;
+            var moments = Cv2.Moments(largest);
+            if (moments.M00 == 0) return null;
 
-            int cx = (int)(m.M10 / m.M00);
-            int cy = (int)(m.M01 / m.M00);
-            return new Point(cx, cy);
+            int cx = (int)(moments.M10 / moments.M00);
+            int cy = (int)(moments.M01 / moments.M00);
+            var rect = Cv2.BoundingRect(largest);
+
+            bool centered = cx > frame.Width * 0.32 && cx < frame.Width * 0.68 &&
+                            cy > frame.Height * 0.25 && cy < frame.Height * 0.75;
+            bool palmSized = maxArea > frame.Width * frame.Height * 0.025;
+            bool palmLike = rect.Width >= 70 && rect.Height >= 70 &&
+                            rect.Width < frame.Width * 0.75 && rect.Height < frame.Height * 0.85;
+
+            return new HandObservation(new Point(cx, cy), centered && palmSized && palmLike);
         }
-
         // ── Queue management ──────────────────────────────────────────────────
         private void EnqueueCentroid(Point p)
         {
@@ -195,8 +236,15 @@ namespace GestureVault.Services
             int absDeltaX = Math.Abs(deltaX);
             int absDeltaY = Math.Abs(deltaY);
 
-            // Must exceed minimum pixel threshold to count as intentional
+            if ((DateTime.UtcNow - _lastGestureAt).TotalMilliseconds < GestureCooldownMs)
+                return;
+
             if (absDeltaX < MinDeltaPixels && absDeltaY < MinDeltaPixels)
+                return;
+
+            if (absDeltaX > absDeltaY && absDeltaX < absDeltaY * DominanceRatio)
+                return;
+            if (absDeltaY > absDeltaX && absDeltaY < absDeltaX * DominanceRatio)
                 return;
 
             string direction;
@@ -208,6 +256,9 @@ namespace GestureVault.Services
 
             // Reset queue so it doesn't fire repeatedly for the same swipe
             _centroids.Clear();
+            _armedForGesture = false;
+            _palmReadyFrames = 0;
+            _lastGestureAt = DateTime.UtcNow;
 
             _dispatcher.TryEnqueue(() =>
             {

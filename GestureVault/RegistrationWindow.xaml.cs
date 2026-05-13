@@ -52,14 +52,14 @@ namespace GestureVault
                 NewPasswordTextBox.Text = NewPasswordBox.Password;
                 NewPasswordTextBox.Visibility = Visibility.Visible;
                 NewPasswordBox.Visibility = Visibility.Collapsed;
-                EyeIcon1.Text = "🙈";
+                EyeIcon1.Text = _newPasswordVisible ? "\uE8F5" : "\uE890";
             }
             else
             {
                 NewPasswordBox.Password = NewPasswordTextBox.Text;
                 NewPasswordBox.Visibility = Visibility.Visible;
                 NewPasswordTextBox.Visibility = Visibility.Collapsed;
-                EyeIcon1.Text = "👁";
+                EyeIcon1.Text = _newPasswordVisible ? "\uE8F5" : "\uE890";
             }
         }
 
@@ -71,14 +71,14 @@ namespace GestureVault
                 ConfirmPasswordTextBox.Text = ConfirmPasswordBox.Password;
                 ConfirmPasswordTextBox.Visibility = Visibility.Visible;
                 ConfirmPasswordBox.Visibility = Visibility.Collapsed;
-                EyeIcon2.Text = "🙈";
+                EyeIcon2.Text = _confirmPasswordVisible ? "\uE8F5" : "\uE890";
             }
             else
             {
                 ConfirmPasswordBox.Password = ConfirmPasswordTextBox.Text;
                 ConfirmPasswordBox.Visibility = Visibility.Visible;
                 ConfirmPasswordTextBox.Visibility = Visibility.Collapsed;
-                EyeIcon2.Text = "👁";
+                EyeIcon2.Text = _confirmPasswordVisible ? "\uE8F5" : "\uE890";
             }
         }
 
@@ -234,12 +234,13 @@ namespace GestureVault
                 GestureRecordedBadge.Visibility = Visibility.Collapsed;
                 RegistrationDetectedGesture.Text = "No gesture detected yet";
                 RegistrationCameraStatus.Text = "Click 'Start Camera' to begin";
-                RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: perform a clear swipe.";
+                RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: place an open palm in the center, then swipe.";
                 RegistrationCameraPlaceholder.Visibility = Visibility.Visible;
                 RegistrationCameraPreview.Source = null;
                 StartRegistrationCameraButton.Content = "📷 Start Camera";
                 NextRegistrationGestureButton.Content = "Next Gesture";
                 NextRegistrationGestureButton.IsEnabled = false;
+                RedoRegistrationGestureButton.IsEnabled = false;
                 FinishSetupButton.IsEnabled = false;
             }
             else
@@ -294,23 +295,22 @@ namespace GestureVault
                         return;
                     }
 
-                    string gestureName = GestureDirectionToLabel(e.Direction);
-
                     _registeredGestureSequence.Add(e.Direction);
                     _waitingForNextRegistrationGesture = true;
-                    RegistrationDetectedGesture.Text = gestureName;
+                    RegistrationDetectedGesture.Text = $"Gesture {_registeredGestureSequence.Count} recorded";
 
                     _registeredGestureDirection = e.Direction;
                     _gestureRecorded = _registeredGestureSequence.Count >= 3;
 
                     GestureRecordedBadge.Visibility = Visibility.Visible;
-                    RecordedGestureText.Text = $"Registered: {GestureSequenceLabel()}";
+                    RecordedGestureText.Text = $"Registered: {_registeredGestureSequence.Count} gesture(s)";
                     NextRegistrationGestureButton.Content = "Next Gesture";
                     NextRegistrationGestureButton.IsEnabled = !_gestureRecorded;
+                    RedoRegistrationGestureButton.IsEnabled = true;
                     FinishSetupButton.IsEnabled = _gestureRecorded;
                     RegistrationGestureInstruction.Text = _gestureRecorded
                         ? "All 3 gestures recorded. Click Finish Setup."
-                        : $"{RegistrationGestureStepLabel()} recorded. Click Next Gesture when you are ready.";
+                        : $"Gesture {_registeredGestureSequence.Count} recorded. Click Next Gesture when you are ready.";
                 });
             };
         }
@@ -328,7 +328,7 @@ namespace GestureVault
                     _registrationGestureService.Start();
                     RegistrationCameraPlaceholder.Visibility = Visibility.Collapsed;
                     RegistrationCameraStatus.Text = "Camera active - perform your swipe now";
-                    RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: perform a clear swipe.";
+                    RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: place an open palm in the center, then swipe.";
                     StartRegistrationCameraButton.Content = "⏹ Stop Camera";
                 }
                 catch (Exception ex)
@@ -341,6 +341,7 @@ namespace GestureVault
                 _registrationGestureService.Stop();
                 RegistrationCameraPlaceholder.Visibility = Visibility.Visible;
                 NextRegistrationGestureButton.IsEnabled = _waitingForNextRegistrationGesture && !_gestureRecorded;
+                RedoRegistrationGestureButton.IsEnabled = _waitingForNextRegistrationGesture;
 
                 if (_gestureRecorded)
                 {
@@ -376,6 +377,7 @@ namespace GestureVault
             {
                 FinishSetupButton.IsEnabled = true;
                 NextRegistrationGestureButton.IsEnabled = false;
+                RedoRegistrationGestureButton.IsEnabled = true;
                 RegistrationGestureInstruction.Text = "All 3 gestures recorded. Click Finish Setup.";
                 return;
             }
@@ -383,8 +385,30 @@ namespace GestureVault
             _registrationGestureIndex++;
             _waitingForNextRegistrationGesture = false;
             NextRegistrationGestureButton.IsEnabled = false;
+            RedoRegistrationGestureButton.IsEnabled = false;
             RegistrationDetectedGesture.Text = "Ready for next gesture";
-            RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: perform a clear swipe.";
+            RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: place an open palm in the center, then swipe.";
+        }
+
+        private void RedoRegistrationGesture_Click(object sender, RoutedEventArgs e)
+        {
+            if (_registeredGestureSequence.Count > 0)
+                _registeredGestureSequence.RemoveAt(_registeredGestureSequence.Count - 1);
+
+            _registrationGestureIndex = Math.Max(0, _registeredGestureSequence.Count);
+            _waitingForNextRegistrationGesture = false;
+            _gestureRecorded = false;
+            RegistrationDetectedGesture.Text = "Ready to record again";
+            RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: place an open palm in the center, then swipe.";
+            RecordedGestureText.Text = _registeredGestureSequence.Count == 0
+                ? "No gestures recorded yet"
+                : $"Registered: {_registeredGestureSequence.Count} gesture(s)";
+            GestureRecordedBadge.Visibility = _registeredGestureSequence.Count == 0
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+            RedoRegistrationGestureButton.IsEnabled = false;
+            NextRegistrationGestureButton.IsEnabled = false;
+            FinishSetupButton.IsEnabled = false;
         }
 
         private static string GestureDirectionToLabel(string direction) => direction switch
@@ -419,7 +443,7 @@ namespace GestureVault
             // Update UI
             RegistrationDetectedGesture.Text = "⏭ Skipped (Demo)";
             GestureRecordedBadge.Visibility = Visibility.Visible;
-            RecordedGestureText.Text = $"Registered: {GestureSequenceLabel()}";
+            RecordedGestureText.Text = "Registered: demo gesture sequence";
             RegistrationCameraStatus.Text = "Gesture sequence set to default";
         }
     

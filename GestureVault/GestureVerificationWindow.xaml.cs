@@ -99,7 +99,7 @@ namespace GestureVault
                         _ => e.Direction
                     };
 
-                    DetectedGestureText.Text = $"Detected: {gestureName}";
+                    DetectedGestureText.Text = "Gesture detected";
 
                     if (e.Direction == _expectedGesture)
                     {
@@ -117,19 +117,17 @@ namespace GestureVault
         {
             _waitingForNextGesture = true;
             GestureStatusText.Text = $"{GestureStepLabel()} recognized";
-            DetectedGestureText.Text = $"Correct gesture: {GestureDirectionToEmoji(_expectedGesture)}";
+            DetectedGestureText.Text = "Gesture accepted";
             NextGestureButton.Content = _gestureIndex == _gestureSequence.Length - 1
                 ? "Unlock Vault"
                 : "Next Gesture";
             NextGestureButton.IsEnabled = true;
+            RedoGestureButton.IsEnabled = true;
         }
         private void GestureMismatched(string detected)
         {
-            string expectedEmoji = GestureDirectionToEmoji(_expectedGesture);
-            string detectedEmoji = GestureDirectionToEmoji(detected);
-
             GestureStatusText.Text = "Wrong gesture";
-            DetectedGestureText.Text = $"Expected: {expectedEmoji}\nDetected: {detectedEmoji}\nTry again!";
+            DetectedGestureText.Text = "Gesture not accepted. Return your palm to the center and try again.";
 
             // Flash the detection area to indicate mismatch
             // (Simple version: just show text, could add animation later)
@@ -155,9 +153,10 @@ namespace GestureVault
         {
             GestureStepText.Text = $"{GestureStepLabel()} of 3";
             GestureStatusText.Text = $"Do {GestureStepLabel().ToLowerInvariant()}";
-            DetectedGestureText.Text = $"Show: {GestureDirectionToEmoji(_expectedGesture)}";
+            DetectedGestureText.Text = "Place an open palm in the center, then perform your registered swipe.";
             NextGestureButton.Content = "Next Gesture";
             NextGestureButton.IsEnabled = false;
+            RedoGestureButton.IsEnabled = false;
             _waitingForNextGesture = false;
         }
 
@@ -207,9 +206,16 @@ namespace GestureVault
                 GestureStatusText.Text = "Camera stopped";
                 DetectedGestureText.Text = "Waiting for hand gesture...";
                 NextGestureButton.IsEnabled = false;
+                RedoGestureButton.IsEnabled = false;
                 _waitingForNextGesture = false;
                 StartCameraButton.Content = "Start Camera";
             }
+        }
+
+        private void RedoGestureButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isTransitioning) return;
+            UpdateGestureStepUi();
         }
 
         private void NextGestureButton_Click(object sender, RoutedEventArgs e)

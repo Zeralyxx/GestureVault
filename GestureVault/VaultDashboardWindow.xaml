@@ -160,7 +160,7 @@
                                      PlaceholderText="Search vault items..."
                                      BorderThickness="0" Background="Transparent"
                                      Foreground="{ThemeResource PrimaryTextBrush}"
-                                     Padding="14,0" VerticalContentAlignment="Center"
+                                     Padding="14,0" Height="40" VerticalAlignment="Center" VerticalContentAlignment="Center"
                                      TextChanged="SearchBox_TextChanged">
                                 <TextBox.Resources>
                                     <ResourceDictionary>
@@ -233,8 +233,58 @@
                         <TextBox x:Name="ItemUsernameBox" Header="Username / Email"
                                  PlaceholderText="e.g. john@email.com"
                                  CornerRadius="12"/>
-                        <PasswordBox x:Name="ItemPasswordBox" Header="Password"
-                                     CornerRadius="12"/>
+                                                <StackPanel Spacing="6">
+                            <TextBlock Text="Password" FontSize="14"
+                                       Foreground="{ThemeResource PrimaryTextBrush}"/>
+                            <Grid Height="44">
+                                <Border CornerRadius="12"
+                                        BorderBrush="{ThemeResource InputBorderBrush}"
+                                        BorderThickness="2"
+                                        Background="{ThemeResource InputBackgroundBrush}"/>
+                                <PasswordBox x:Name="ItemPasswordBox"
+                                             Height="28"
+                                             Margin="12,0,88,0"
+                                             VerticalAlignment="Center"
+                                             BorderThickness="0"
+                                             Background="Transparent"
+                                             Padding="0"
+                                             PasswordRevealMode="Hidden"/>
+                                <TextBox x:Name="ItemPasswordTextBox"
+                                         Visibility="Collapsed"
+                                         Height="28"
+                                         Margin="12,0,88,0"
+                                         VerticalAlignment="Center"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         Padding="0"/>
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,8,0"
+                                            Spacing="4">
+                                    <Button x:Name="ToggleItemPasswordButton"
+                                            Width="34" Height="34"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Click="ToggleItemPassword_Click">
+                                        <TextBlock x:Name="ItemPasswordEyeIcon"
+                                                   Text="&#xE890;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="16"/>
+                                    </Button>
+                                    <Button x:Name="CopyItemPasswordButton"
+                                            Width="34" Height="34"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Click="CopyItemPassword_Click">
+                                        <TextBlock x:Name="ItemPasswordCopyIcon"
+                                                   Text="&#xE8C8;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="16"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
                         <TextBox x:Name="ItemUrlBox" Header="Website URL (optional)"
                                  PlaceholderText="e.g. https://facebook.com"
                                  CornerRadius="12"/>
@@ -334,7 +384,18 @@
                         <TextBlock x:Name="ViewItemType" FontSize="13"
                                    Foreground="{ThemeResource SecondaryTextBrush}"/>
                     </StackPanel>
-
+                    <Button Grid.Row="0"
+                            Width="36" Height="36"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="0,22,24,0"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="CloseViewOverlay_Click">
+                        <TextBlock Text="&#xE711;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="16"/>
+                    </Button>
                     <!-- Scrollable dynamic content -->
                     <ScrollViewer Grid.Row="1"
                                   VerticalScrollBarVisibility="Auto"
@@ -351,11 +412,11 @@
                             <ColumnDefinition Width="12"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Button Grid.Column="0" Content="Delete" Height="48"
+                        <Button Grid.Column="0" x:Name="DeleteItemButton" Content="Delete" Height="48"
                                 HorizontalAlignment="Stretch"
                                 Style="{StaticResource DangerButtonStyle}"
                                 Click="DeleteItemButton_Click"/>
-                        <Button Grid.Column="2" Content="Close" Height="48"
+                        <Button Grid.Column="2" x:Name="CloseViewItemButton" Content="Edit" Height="48"
                                 CornerRadius="16"
                                 Background="{ThemeResource AccentBrush}"
                                 Foreground="White" FontWeight="SemiBold"
@@ -558,7 +619,7 @@
                                                      PlaceholderText="e.g. open the blue garden gate"
                                                      BorderThickness="0" Background="Transparent"
                                                      Foreground="{ThemeResource PrimaryTextBrush}"
-                                                     Padding="14,0" VerticalContentAlignment="Center"
+                                                     Padding="14,0" Height="40" VerticalAlignment="Center" VerticalContentAlignment="Center"
                                                      FontSize="15">
                                                 <TextBox.Resources>
                                                     <ResourceDictionary>

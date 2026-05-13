@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace GestureVault.Services
@@ -46,5 +46,7 @@ namespace GestureVault.Services
         public string StoredAt { get; set; } = string.Empty;
 
         public string AddedAt { get; set; } = DateTime.Now.ToString("MMM dd, yyyy");
+        public string? OriginalPath { get; set; }
+        public bool IsDeleted { get; set; } = false;
     }
 }
