@@ -27,6 +27,9 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="Assets\Models\gesture_recognizer.task" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Assets\Models\gesture_recognizer.task')" />
+    <Content Include="Assets\Models\GestureModel.zip" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Assets\Models\GestureModel.zip')" />
+    <Content Include="Tools\mediapipe_gesture_recognizer.py" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

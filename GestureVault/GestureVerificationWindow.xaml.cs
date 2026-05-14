@@ -14,9 +14,12 @@ namespace GestureVault
     {
         private GestureService? _gestureService;
         private bool _isTransitioning = false;
-        private string[] _gestureSequence = { "SWIPE_RIGHT", "SWIPE_RIGHT", "SWIPE_RIGHT" };
+        private string[] _gestureSequence = { "OPEN_HAND", "FIST", "POINT" };
         private int _gestureIndex = 0;
         private bool _waitingForNextGesture = false;
+        private bool _acceptingGesture = false;
+        private readonly GestureCountdownPopup _gestureCountdownPopup = new();
+        private int _gestureCountdownRun = 0;
         private string _expectedGesture => _gestureSequence[_gestureIndex];
 
         public GestureVerificationWindow()
@@ -46,6 +49,7 @@ namespace GestureVault
             {
                 var gestures = savedSequence
                     .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(NormalizeSavedGesture)
                     .Take(3)
                     .ToArray();
                 if (gestures.Length == 3)
@@ -55,7 +59,7 @@ namespace GestureVault
                 }
             }
 
-            string savedGesture = settings.Values["RegisteredGesture"] as string ?? "SWIPE_RIGHT";
+            string savedGesture = NormalizeSavedGesture(settings.Values["RegisteredGesture"] as string ?? "OPEN_HAND");
             _gestureSequence = new[] { savedGesture, savedGesture, savedGesture };
         }
 
@@ -90,16 +94,10 @@ namespace GestureVault
 
                 DispatcherQueue.TryEnqueue(() =>
                 {
-                    string gestureName = e.Direction switch
-                    {
-                        "SWIPE_RIGHT" => "👋 Swipe Right",
-                        "SWIPE_LEFT" => "👈 Swipe Left",
-                        "SWIPE_UP" => "👆 Swipe Up",
-                        "SWIPE_DOWN" => "👇 Swipe Down",
-                        _ => e.Direction
-                    };
+                    if (!_acceptingGesture || _waitingForNextGesture)
+                        return;
 
-                    DetectedGestureText.Text = "Gesture detected";
+                    DetectedGestureText.Text = $"{GestureDirectionToEmoji(e.Direction)} detected";
 
                     if (e.Direction == _expectedGesture)
                     {
@@ -115,6 +113,7 @@ namespace GestureVault
 
         private void GestureMatched()
         {
+            CancelGestureCountdown();
             _waitingForNextGesture = true;
             GestureStatusText.Text = $"{GestureStepLabel()} recognized";
             DetectedGestureText.Text = "Gesture accepted";
@@ -133,8 +132,24 @@ namespace GestureVault
             // (Simple version: just show text, could add animation later)
         }
 
+        private static string NormalizeSavedGesture(string gesture) => gesture switch
+        {
+            "SWIPE_RIGHT" => "OPEN_HAND",
+            "SWIPE_LEFT" => "FIST",
+            "SWIPE_UP" => "POINT",
+            "SWIPE_DOWN" => "OPEN_HAND",
+            _ => gesture
+        };
+
         private static string GestureDirectionToEmoji(string direction) => direction switch
         {
+            "OPEN_HAND" => "Open hand",
+            "FIST" => "Fist",
+            "POINT" => "Point",
+            "THUMB_UP" => "Thumbs up",
+            "THUMB_DOWN" => "Thumbs down",
+            "VICTORY" => "Victory",
+            "I_LOVE_YOU" => "I love you",
             "SWIPE_RIGHT" => "👋 Swipe Right",
             "SWIPE_LEFT" => "👈 Swipe Left",
             "SWIPE_UP" => "👆 Swipe Up",
@@ -153,11 +168,52 @@ namespace GestureVault
         {
             GestureStepText.Text = $"{GestureStepLabel()} of 3";
             GestureStatusText.Text = $"Do {GestureStepLabel().ToLowerInvariant()}";
-            DetectedGestureText.Text = "Place an open palm in the center, then perform your registered swipe.";
+            DetectedGestureText.Text = "Wait for the countdown, then hold your registered hand sign.";
             NextGestureButton.Content = "Next Gesture";
             NextGestureButton.IsEnabled = false;
             RedoGestureButton.IsEnabled = false;
             _waitingForNextGesture = false;
+            _acceptingGesture = false;
+        }
+
+        private async void StartGestureCountdown()
+        {
+            int countdownRun = ++_gestureCountdownRun;
+            _acceptingGesture = false;
+            for (int i = 3; i >= 1; i--)
+            {
+                if (countdownRun != _gestureCountdownRun || _isTransitioning || _gestureService == null || !_gestureService.IsRunning)
+                {
+                    _gestureCountdownPopup.Hide();
+                    return;
+                }
+
+                GestureStatusText.Text = i.ToString();
+                DetectedGestureText.Text = "Get your hand sign ready.";
+                _gestureCountdownPopup.Show(
+                    this.Content.XamlRoot,
+                    $"{GestureStepLabel()} arming",
+                    i,
+                    "Get your registered hand sign ready.");
+                await System.Threading.Tasks.Task.Delay(1000);
+            }
+
+            if (countdownRun != _gestureCountdownRun || _isTransitioning || _gestureService == null || !_gestureService.IsRunning)
+            {
+                _gestureCountdownPopup.Hide();
+                return;
+            }
+
+            _gestureCountdownPopup.Hide();
+            GestureStatusText.Text = "Go";
+            DetectedGestureText.Text = "Hold your registered hand sign steady.";
+            _acceptingGesture = true;
+        }
+
+        private void CancelGestureCountdown()
+        {
+            _gestureCountdownRun++;
+            _gestureCountdownPopup.Hide();
         }
 
         private void NavigateToVault()
@@ -167,6 +223,7 @@ namespace GestureVault
                 _gestureService?.Stop();
                 _gestureService?.Dispose();
                 _gestureService = null;
+                CancelGestureCountdown();
 
                 var vaultWindow = new VaultDashboardWindow();
                 vaultWindow.Activate();
@@ -189,6 +246,7 @@ namespace GestureVault
                     CameraPlaceholder.Visibility = Visibility.Collapsed;
                     UpdateGestureStepUi();
                     StartCameraButton.Content = "Stop Camera";
+                    StartGestureCountdown();
                 }
                 catch (Exception ex)
                 {
@@ -200,6 +258,7 @@ namespace GestureVault
             else
             {
                 _gestureService?.Stop();
+                CancelGestureCountdown();
 
                 CameraPlaceholder.Visibility = Visibility.Visible;
                 CameraPreview.Source = null;
@@ -216,6 +275,7 @@ namespace GestureVault
         {
             if (_isTransitioning) return;
             UpdateGestureStepUi();
+            StartGestureCountdown();
         }
 
         private void NextGestureButton_Click(object sender, RoutedEventArgs e)
@@ -235,6 +295,7 @@ namespace GestureVault
 
             _gestureIndex++;
             UpdateGestureStepUi();
+            StartGestureCountdown();
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -245,6 +306,7 @@ namespace GestureVault
             _gestureService?.Stop();
             _gestureService?.Dispose();
             _gestureService = null;
+            CancelGestureCountdown();
 
             var voiceWindow = new VoiceVerificationWindow();
             voiceWindow.Activate();
@@ -260,6 +322,7 @@ namespace GestureVault
             _gestureService?.Stop();
             _gestureService?.Dispose();
             _gestureService = null;
+            CancelGestureCountdown();
 
             NavigateToVault();
         }

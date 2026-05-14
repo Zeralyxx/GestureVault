@@ -212,7 +212,7 @@
                                         Background="Transparent"
                                         BorderThickness="0"
                                         Click="TogglePasswordButton_Click">
-                                        <TextBlock x:Name="EyeIcon" Text="&#xE890;" FontFamily="Segoe MDL2 Assets" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="EyeIcon" Text="&#xE9A8;" FontFamily="Segoe MDL2 Assets" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                     </Button>
                                 </Grid>
                             </StackPanel>

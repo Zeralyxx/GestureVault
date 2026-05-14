@@ -44,7 +44,7 @@ namespace GestureVault
             }
 
             _isPasswordVisible = !_isPasswordVisible;
-            EyeIcon.Text = _isPasswordVisible ? "\uE8F5" : "\uE890";
+            EyeIcon.Text = _isPasswordVisible ? "\uE9A9" : "\uE9A8";
         }
 
         // ── Continue button ───────────────────────────────────────────────────

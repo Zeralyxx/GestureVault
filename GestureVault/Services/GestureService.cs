@@ -1,9 +1,10 @@
 using Microsoft.UI.Dispatching;
 using OpenCvSharp;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 
 namespace GestureVault.Services
 {
@@ -15,11 +16,9 @@ namespace GestureVault.Services
 
     public class GestureService : IDisposable
     {
-        // ── Events ────────────────────────────────────────────────────────────
         public event EventHandler<Mat>? FrameReady;
         public event EventHandler<GestureDetectedEventArgs>? GestureDetected;
 
-        // ── State ─────────────────────────────────────────────────────────────
         public bool IsRunning { get; private set; }
 
         private VideoCapture? _capture;
@@ -27,16 +26,14 @@ namespace GestureVault.Services
         private Task? _captureTask;
         private readonly DispatcherQueue _dispatcher;
         private readonly object _captureGate = new();
+        private readonly MediaPipeGestureRecognizer _mediaPipeRecognizer = new();
+        private readonly GestureMlClassifier _mlClassifier = new();
 
-        // Motion tracking — stores last 20 hand centroids
-        private readonly Queue<Point> _centroids = new(20);
-        private const int QueueCapacity = 18;
-        private const int MinDeltaPixels = 130;
-        private const double DominanceRatio = 1.35;
-        private const int GestureCooldownMs = 1200;
-        private const int PalmReadyFramesRequired = 8;
-        private bool _armedForGesture = false;
-        private int _palmReadyFrames = 0;
+        // Static sign tracking: emit only after the same pose is stable.
+        private readonly Queue<string> _recentSigns = new(10);
+        private const int SignWindowSize = 8;
+        private const int StableSignFramesRequired = 5;
+        private const int GestureCooldownMs = 900;
         private DateTime _lastGestureAt = DateTime.MinValue;
 
         public GestureService(DispatcherQueue dispatcher)
@@ -44,12 +41,11 @@ namespace GestureVault.Services
             _dispatcher = dispatcher;
         }
 
-        // ── Start / Stop ──────────────────────────────────────────────────────
         public void Start()
         {
             if (IsRunning) return;
 
-            _capture = new VideoCapture(0); // 0 = default webcam
+            _capture = new VideoCapture(0);
             if (!_capture.IsOpened())
                 throw new InvalidOperationException("Could not open webcam. Check that it is connected and not in use.");
 
@@ -73,7 +69,7 @@ namespace GestureVault.Services
             }
             catch
             {
-                // The capture loop is best-effort during shutdown.
+                // Best-effort shutdown.
             }
 
             lock (_captureGate)
@@ -82,15 +78,13 @@ namespace GestureVault.Services
                 _capture?.Dispose();
                 _capture = null;
             }
+
             _cts?.Dispose();
             _cts = null;
             _captureTask = null;
-            _centroids.Clear();
-            _armedForGesture = false;
-            _palmReadyFrames = 0;
+            _recentSigns.Clear();
         }
 
-        // ── Main capture loop (runs on background thread) ─────────────────────
         private void CaptureLoop(CancellationToken token)
         {
             using var frame = new Mat();
@@ -106,7 +100,6 @@ namespace GestureVault.Services
                 if (!hasFrame)
                     continue;
 
-                // 1. Send raw frame to UI for preview
                 var previewClone = frame.Clone();
                 _dispatcher.TryEnqueue(() =>
                 {
@@ -114,89 +107,42 @@ namespace GestureVault.Services
                     previewClone.Dispose();
                 });
 
-                var observation = FindHandObservation(frame);
-
-                if (observation.HasValue)
-                {
-                    if (!_armedForGesture)
-                    {
-                        if (observation.Value.IsPalmReady)
-                        {
-                            _palmReadyFrames++;
-                            if (_palmReadyFrames >= PalmReadyFramesRequired)
-                            {
-                                _armedForGesture = true;
-                                _centroids.Clear();
-                            }
-                        }
-                        else
-                        {
-                            _palmReadyFrames = 0;
-                        }
-                    }
-                    else
-                    {
-                        EnqueueCentroid(observation.Value.Centroid);
-                        AnalyzeMotion();
-                    }
-                }
-                else
-                {
-                    _centroids.Clear();
-                    _armedForGesture = false;
-                    _palmReadyFrames = 0;
-                }
-
-                Thread.Sleep(33); // ~30 FPS
+                TrackStableSign(DetectHandSign(frame));
+                Thread.Sleep(33);
             }
         }
 
-        private readonly struct HandObservation
+        private string? DetectHandSign(Mat frame)
         {
-            public HandObservation(Point centroid, bool isPalmReady)
-            {
-                Centroid = centroid;
-                IsPalmReady = isPalmReady;
-            }
+            if (_mediaPipeRecognizer.IsAvailable)
+                return _mediaPipeRecognizer.Predict(frame);
 
-            public Point Centroid { get; }
-            public bool IsPalmReady { get; }
-        }
+            if (_mlClassifier.IsAvailable)
+                return _mlClassifier.Predict(frame);
 
-        private HandObservation? FindHandObservation(Mat frame)
-        {
-            using var hsv = new Mat();
-            using var mask = new Mat();
+            using var mask = BuildSkinMask(frame);
 
-            Cv2.CvtColor(frame, hsv, ColorConversionCodes.BGR2HSV);
-
-            var lower = new Scalar(0, 20, 70);
-            var upper = new Scalar(20, 255, 255);
-            Cv2.InRange(hsv, lower, upper, mask);
-
-            Cv2.GaussianBlur(mask, mask, new Size(7, 7), 0);
-            using var kernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(7, 7));
-            Cv2.MorphologyEx(mask, mask, MorphTypes.Open, kernel);
-            Cv2.MorphologyEx(mask, mask, MorphTypes.Close, kernel);
-
-            Cv2.FindContours(mask, out Point[][] contours, out _,
-                RetrievalModes.External, ContourApproximationModes.ApproxSimple);
+            Cv2.FindContours(mask, out Point[][] contours, out _, RetrievalModes.External,
+                ContourApproximationModes.ApproxSimple);
 
             if (contours.Length == 0) return null;
 
-            double maxArea = 0;
-            Point[]? largest = null;
-            foreach (var contour in contours)
+            foreach (Point[] contour in contours.OrderByDescending(contour => Cv2.ContourArea(contour)))
             {
-                double area = Cv2.ContourArea(contour);
-                if (area > maxArea)
-                {
-                    maxArea = area;
-                    largest = contour;
-                }
+                string? sign = ClassifyContour(frame, contour);
+                if (!string.IsNullOrWhiteSpace(sign))
+                    return sign;
             }
 
-            if (largest == null || maxArea < 7000) return null;
+            return null;
+        }
+
+        private static string? ClassifyContour(Mat frame, Point[] contour)
+        {
+            Point[] largest = contour;
+            double area = Cv2.ContourArea(largest);
+            double frameArea = frame.Width * frame.Height;
+            if (area < Math.Max(3500, frameArea * 0.01)) return null;
 
             var moments = Cv2.Moments(largest);
             if (moments.M00 == 0) return null;
@@ -205,71 +151,159 @@ namespace GestureVault.Services
             int cy = (int)(moments.M01 / moments.M00);
             var rect = Cv2.BoundingRect(largest);
 
-            bool centered = cx > frame.Width * 0.32 && cx < frame.Width * 0.68 &&
-                            cy > frame.Height * 0.25 && cy < frame.Height * 0.75;
-            bool palmSized = maxArea > frame.Width * frame.Height * 0.025;
-            bool palmLike = rect.Width >= 70 && rect.Height >= 70 &&
-                            rect.Width < frame.Width * 0.75 && rect.Height < frame.Height * 0.85;
+            bool centered = cx > frame.Width * 0.18 && cx < frame.Width * 0.82 &&
+                            cy > frame.Height * 0.20 && cy < frame.Height * 0.88;
+            bool handSized = area > frameArea * 0.01;
+            bool plausibleHand = centered && handSized &&
+                                 rect.Width >= 55 && rect.Height >= 55 &&
+                                 rect.Width < frame.Width * 0.72 &&
+                                 rect.Height < frame.Height * 0.86;
+            if (!plausibleHand) return null;
 
-            return new HandObservation(new Point(cx, cy), centered && palmSized && palmLike);
+            Point[] hull = Cv2.ConvexHull(largest);
+            double hullArea = Cv2.ContourArea(hull);
+            if (hullArea <= 0) return null;
+
+            double solidity = area / hullArea;
+            double extent = area / Math.Max(1, rect.Width * rect.Height);
+            double aspect = rect.Width / (double)rect.Height;
+            double perimeter = Cv2.ArcLength(largest, true);
+            Point[] approx = Cv2.ApproxPolyDP(largest, perimeter * 0.018, true);
+            int convexityDefectCount = CountConvexityDefects(largest);
+
+            if (LooksLikeFace(frame, rect, area, solidity, extent, aspect, convexityDefectCount))
+                return null;
+
+            if (aspect < 0.66 && rect.Height > rect.Width * 1.35 && solidity < 0.92)
+                return "POINT";
+
+            if (solidity < 0.76 || convexityDefectCount >= 3 || (approx.Length >= 10 && extent < 0.58))
+                return "OPEN_HAND";
+
+            if (solidity >= 0.78 && extent >= 0.42 && !LooksTooOvalForFist(aspect, extent, convexityDefectCount))
+                return "FIST";
+
+            return null;
         }
-        // ── Queue management ──────────────────────────────────────────────────
-        private void EnqueueCentroid(Point p)
+
+        private static bool LooksLikeFace(
+            Mat frame,
+            Rect rect,
+            double area,
+            double solidity,
+            double extent,
+            double aspect,
+            int convexityDefectCount)
         {
-            if (_centroids.Count >= QueueCapacity)
-                _centroids.Dequeue();
-            _centroids.Enqueue(p);
+            double frameArea = frame.Width * frame.Height;
+            double centerX = rect.X + rect.Width / 2.0;
+            double centerY = rect.Y + rect.Height / 2.0;
+            bool inFaceZone =
+                centerX > frame.Width * 0.24 && centerX < frame.Width * 0.76 &&
+                centerY > frame.Height * 0.12 && centerY < frame.Height * 0.58;
+            bool ovalSkinBlob =
+                aspect > 0.58 && aspect < 1.12 &&
+                solidity > 0.82 &&
+                extent > 0.50 &&
+                convexityDefectCount <= 2;
+            bool faceSized =
+                area > frameArea * 0.035 ||
+                rect.Height > frame.Height * 0.24;
+
+            return inFaceZone && ovalSkinBlob && faceSized;
         }
 
-        // ── Motion direction analysis ─────────────────────────────────────────
-        private void AnalyzeMotion()
+        private static bool LooksTooOvalForFist(double aspect, double extent, int convexityDefectCount)
         {
-            if (_centroids.Count < QueueCapacity) return;
+            return convexityDefectCount == 0 &&
+                   aspect > 0.62 && aspect < 1.12 &&
+                   extent > 0.62;
+        }
 
-            var points = _centroids.ToArray();
-            var first = points[0];
-            var last = points[^1];
+        private static int CountConvexityDefects(Point[] contour)
+        {
+            if (contour.Length < 4)
+                return 0;
 
-            int deltaX = last.X - first.X;
-            int deltaY = last.Y - first.Y;
+            int[] hullIndices = Cv2.ConvexHullIndices(contour);
+            if (hullIndices.Length < 4)
+                return 0;
 
-            int absDeltaX = Math.Abs(deltaX);
-            int absDeltaY = Math.Abs(deltaY);
+            try
+            {
+                Vec4i[] defects = Cv2.ConvexityDefects(contour, hullIndices);
+                return defects.Count(defect => defect.Item3 / 256.0 > 12);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private static Mat BuildSkinMask(Mat frame)
+        {
+            var hsv = new Mat();
+            var ycrcb = new Mat();
+            var maskA = new Mat();
+            var maskB = new Mat();
+            var maskC = new Mat();
+            var mask = new Mat();
+
+            Cv2.CvtColor(frame, hsv, ColorConversionCodes.BGR2HSV);
+            Cv2.CvtColor(frame, ycrcb, ColorConversionCodes.BGR2YCrCb);
+            Cv2.InRange(hsv, new Scalar(0, 16, 45), new Scalar(28, 255, 255), maskA);
+            Cv2.InRange(hsv, new Scalar(160, 16, 45), new Scalar(179, 255, 255), maskB);
+            Cv2.BitwiseOr(maskA, maskB, mask);
+            Cv2.InRange(ycrcb, new Scalar(0, 133, 77), new Scalar(255, 173, 127), maskC);
+            Cv2.BitwiseAnd(mask, maskC, mask);
+
+            maskA.Dispose();
+            maskB.Dispose();
+            maskC.Dispose();
+            hsv.Dispose();
+            ycrcb.Dispose();
+
+            Cv2.GaussianBlur(mask, mask, new Size(7, 7), 0);
+            using var kernel = Cv2.GetStructuringElement(MorphShapes.Ellipse, new Size(7, 7));
+            Cv2.MorphologyEx(mask, mask, MorphTypes.Open, kernel);
+            Cv2.MorphologyEx(mask, mask, MorphTypes.Close, kernel);
+
+            return mask;
+        }
+
+        private void TrackStableSign(string? sign)
+        {
+            if (string.IsNullOrWhiteSpace(sign))
+            {
+                _recentSigns.Clear();
+                return;
+            }
+
+            if (_recentSigns.Count >= SignWindowSize)
+                _recentSigns.Dequeue();
+            _recentSigns.Enqueue(sign);
 
             if ((DateTime.UtcNow - _lastGestureAt).TotalMilliseconds < GestureCooldownMs)
                 return;
 
-            if (absDeltaX < MinDeltaPixels && absDeltaY < MinDeltaPixels)
+            int matches = _recentSigns.Count(s => s == sign);
+            if (_recentSigns.Count < SignWindowSize || matches < StableSignFramesRequired)
                 return;
 
-            if (absDeltaX > absDeltaY && absDeltaX < absDeltaY * DominanceRatio)
-                return;
-            if (absDeltaY > absDeltaX && absDeltaY < absDeltaX * DominanceRatio)
-                return;
-
-            string direction;
-
-            if (absDeltaY > absDeltaX)
-                direction = deltaY < 0 ? "SWIPE_UP" : "SWIPE_DOWN";
-            else
-                direction = deltaX < 0 ? "SWIPE_LEFT" : "SWIPE_RIGHT";
-
-            // Reset queue so it doesn't fire repeatedly for the same swipe
-            _centroids.Clear();
-            _armedForGesture = false;
-            _palmReadyFrames = 0;
+            _recentSigns.Clear();
             _lastGestureAt = DateTime.UtcNow;
 
             _dispatcher.TryEnqueue(() =>
             {
-                GestureDetected?.Invoke(this, new GestureDetectedEventArgs(direction));
+                GestureDetected?.Invoke(this, new GestureDetectedEventArgs(sign));
             });
         }
 
-        // ── Cleanup ───────────────────────────────────────────────────────────
         public void Dispose()
         {
             Stop();
+            _mediaPipeRecognizer.Dispose();
+            _mlClassifier.Dispose();
         }
     }
 }

@@ -19,11 +19,14 @@ namespace GestureVault
         private bool _newPasswordVisible = false;
         private bool _confirmPasswordVisible = false;
         private GestureService? _registrationGestureService;
-        private string _registeredGestureDirection = "SWIPE_RIGHT"; // default
+        private string _registeredGestureDirection = "OPEN_HAND";
         private readonly List<string> _registeredGestureSequence = new();
         private int _registrationGestureIndex = 0;
         private bool _waitingForNextRegistrationGesture = false;
         private bool _gestureRecorded = false;
+        private bool _acceptingRegistrationGesture = false;
+        private readonly GestureCountdownPopup _registrationCountdownPopup = new();
+        private int _registrationCountdownRun = 0;
 
         public RegistrationWindow()
         {
@@ -52,14 +55,14 @@ namespace GestureVault
                 NewPasswordTextBox.Text = NewPasswordBox.Password;
                 NewPasswordTextBox.Visibility = Visibility.Visible;
                 NewPasswordBox.Visibility = Visibility.Collapsed;
-                EyeIcon1.Text = _newPasswordVisible ? "\uE8F5" : "\uE890";
+                EyeIcon1.Text = _newPasswordVisible ? "\uE9A9" : "\uE9A8";
             }
             else
             {
                 NewPasswordBox.Password = NewPasswordTextBox.Text;
                 NewPasswordBox.Visibility = Visibility.Visible;
                 NewPasswordTextBox.Visibility = Visibility.Collapsed;
-                EyeIcon1.Text = _newPasswordVisible ? "\uE8F5" : "\uE890";
+                EyeIcon1.Text = _newPasswordVisible ? "\uE9A9" : "\uE9A8";
             }
         }
 
@@ -71,14 +74,14 @@ namespace GestureVault
                 ConfirmPasswordTextBox.Text = ConfirmPasswordBox.Password;
                 ConfirmPasswordTextBox.Visibility = Visibility.Visible;
                 ConfirmPasswordBox.Visibility = Visibility.Collapsed;
-                EyeIcon2.Text = _confirmPasswordVisible ? "\uE8F5" : "\uE890";
+                EyeIcon2.Text = _confirmPasswordVisible ? "\uE9A9" : "\uE9A8";
             }
             else
             {
                 ConfirmPasswordBox.Password = ConfirmPasswordTextBox.Text;
                 ConfirmPasswordBox.Visibility = Visibility.Visible;
                 ConfirmPasswordTextBox.Visibility = Visibility.Collapsed;
-                EyeIcon2.Text = _confirmPasswordVisible ? "\uE8F5" : "\uE890";
+                EyeIcon2.Text = _confirmPasswordVisible ? "\uE9A9" : "\uE9A8";
             }
         }
 
@@ -174,6 +177,7 @@ namespace GestureVault
             _registrationGestureService?.Stop();
             _registrationGestureService?.Dispose();
             _registrationGestureService = null;
+            CancelRegistrationCountdown();
 
             string pw = _newPasswordVisible
                 ? NewPasswordTextBox.Text
@@ -231,10 +235,11 @@ namespace GestureVault
                 _registeredGestureSequence.Clear();
                 _registrationGestureIndex = 0;
                 _waitingForNextRegistrationGesture = false;
+                _acceptingRegistrationGesture = false;
                 GestureRecordedBadge.Visibility = Visibility.Collapsed;
                 RegistrationDetectedGesture.Text = "No gesture detected yet";
                 RegistrationCameraStatus.Text = "Click 'Start Camera' to begin";
-                RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: place an open palm in the center, then swipe.";
+                RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: wait for the countdown, then hold a hand sign.";
                 RegistrationCameraPlaceholder.Visibility = Visibility.Visible;
                 RegistrationCameraPreview.Source = null;
                 StartRegistrationCameraButton.Content = "📷 Start Camera";
@@ -249,6 +254,7 @@ namespace GestureVault
                 _registrationGestureService?.Stop();
                 _registrationGestureService?.Dispose();
                 _registrationGestureService = null;
+                CancelRegistrationCountdown();
             }
 
             SetDotActive(Step1Dot, Step1DotText, step >= 1);
@@ -290,14 +296,19 @@ namespace GestureVault
             {
                 DispatcherQueue.TryEnqueue(() =>
                 {
+                    if (!_acceptingRegistrationGesture)
+                        return;
+
                     if (_registeredGestureSequence.Count >= 3 || _waitingForNextRegistrationGesture)
                     {
                         return;
                     }
 
                     _registeredGestureSequence.Add(e.Direction);
+                    CancelRegistrationCountdown();
                     _waitingForNextRegistrationGesture = true;
-                    RegistrationDetectedGesture.Text = $"Gesture {_registeredGestureSequence.Count} recorded";
+                    _acceptingRegistrationGesture = false;
+                    RegistrationDetectedGesture.Text = $"{GestureDirectionToLabel(e.Direction)} recorded";
 
                     _registeredGestureDirection = e.Direction;
                     _gestureRecorded = _registeredGestureSequence.Count >= 3;
@@ -327,9 +338,10 @@ namespace GestureVault
                 {
                     _registrationGestureService.Start();
                     RegistrationCameraPlaceholder.Visibility = Visibility.Collapsed;
-                    RegistrationCameraStatus.Text = "Camera active - perform your swipe now";
-                    RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: place an open palm in the center, then swipe.";
+                    RegistrationCameraStatus.Text = "Camera active";
+                    RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: wait for the countdown, then hold a hand sign.";
                     StartRegistrationCameraButton.Content = "⏹ Stop Camera";
+                    StartRegistrationCountdown();
                 }
                 catch (Exception ex)
                 {
@@ -339,6 +351,7 @@ namespace GestureVault
             else
             {
                 _registrationGestureService.Stop();
+                CancelRegistrationCountdown();
                 RegistrationCameraPlaceholder.Visibility = Visibility.Visible;
                 NextRegistrationGestureButton.IsEnabled = _waitingForNextRegistrationGesture && !_gestureRecorded;
                 RedoRegistrationGestureButton.IsEnabled = _waitingForNextRegistrationGesture;
@@ -384,10 +397,12 @@ namespace GestureVault
 
             _registrationGestureIndex++;
             _waitingForNextRegistrationGesture = false;
+            _acceptingRegistrationGesture = false;
             NextRegistrationGestureButton.IsEnabled = false;
             RedoRegistrationGestureButton.IsEnabled = false;
             RegistrationDetectedGesture.Text = "Ready for next gesture";
-            RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: place an open palm in the center, then swipe.";
+            RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: wait for the countdown, then hold a hand sign.";
+            StartRegistrationCountdown();
         }
 
         private void RedoRegistrationGesture_Click(object sender, RoutedEventArgs e)
@@ -397,9 +412,10 @@ namespace GestureVault
 
             _registrationGestureIndex = Math.Max(0, _registeredGestureSequence.Count);
             _waitingForNextRegistrationGesture = false;
+            _acceptingRegistrationGesture = false;
             _gestureRecorded = false;
             RegistrationDetectedGesture.Text = "Ready to record again";
-            RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: place an open palm in the center, then swipe.";
+            RegistrationGestureInstruction.Text = $"{RegistrationGestureStepLabel()}: wait for the countdown, then hold a hand sign.";
             RecordedGestureText.Text = _registeredGestureSequence.Count == 0
                 ? "No gestures recorded yet"
                 : $"Registered: {_registeredGestureSequence.Count} gesture(s)";
@@ -409,10 +425,18 @@ namespace GestureVault
             RedoRegistrationGestureButton.IsEnabled = false;
             NextRegistrationGestureButton.IsEnabled = false;
             FinishSetupButton.IsEnabled = false;
+            StartRegistrationCountdown();
         }
 
         private static string GestureDirectionToLabel(string direction) => direction switch
         {
+            "OPEN_HAND" => "Open hand",
+            "FIST" => "Fist",
+            "POINT" => "Point",
+            "THUMB_UP" => "Thumbs up",
+            "THUMB_DOWN" => "Thumbs down",
+            "VICTORY" => "Victory",
+            "I_LOVE_YOU" => "I love you",
             "SWIPE_RIGHT" => "Swipe Right",
             "SWIPE_LEFT" => "Swipe Left",
             "SWIPE_UP" => "Swipe Up",
@@ -427,13 +451,15 @@ namespace GestureVault
             // Stop camera if running
             _registrationGestureService?.Stop();
             _registrationGestureService?.Dispose();
+            CancelRegistrationCountdown();
 
             // Use default gesture sequence
-            _registeredGestureDirection = "SWIPE_RIGHT";
+            _registeredGestureDirection = "OPEN_HAND";
             _registeredGestureSequence.Clear();
-            _registeredGestureSequence.AddRange(new[] { "SWIPE_RIGHT", "SWIPE_LEFT", "SWIPE_UP" });
+            _registeredGestureSequence.AddRange(new[] { "OPEN_HAND", "FIST", "POINT" });
             _registrationGestureIndex = 2;
             _waitingForNextRegistrationGesture = false;
+            _acceptingRegistrationGesture = false;
             _gestureRecorded = true;
 
             // Enable finish button
@@ -445,6 +471,49 @@ namespace GestureVault
             GestureRecordedBadge.Visibility = Visibility.Visible;
             RecordedGestureText.Text = "Registered: demo gesture sequence";
             RegistrationCameraStatus.Text = "Gesture sequence set to default";
+        }
+
+        private async void StartRegistrationCountdown()
+        {
+            if (_registrationGestureService == null || !_registrationGestureService.IsRunning || _gestureRecorded)
+                return;
+
+            int countdownRun = ++_registrationCountdownRun;
+            _acceptingRegistrationGesture = false;
+            for (int i = 3; i >= 1; i--)
+            {
+                if (countdownRun != _registrationCountdownRun || _registrationGestureService == null || !_registrationGestureService.IsRunning || _waitingForNextRegistrationGesture || _gestureRecorded)
+                {
+                    _registrationCountdownPopup.Hide();
+                    return;
+                }
+
+                RegistrationCameraStatus.Text = i.ToString();
+                RegistrationGestureInstruction.Text = "Get your hand sign ready.";
+                _registrationCountdownPopup.Show(
+                    this.Content.XamlRoot,
+                    $"{RegistrationGestureStepLabel()} arming",
+                    i,
+                    "Get your hand sign ready.");
+                await System.Threading.Tasks.Task.Delay(1000);
+            }
+
+            if (countdownRun != _registrationCountdownRun || _registrationGestureService == null || !_registrationGestureService.IsRunning || _waitingForNextRegistrationGesture || _gestureRecorded)
+            {
+                _registrationCountdownPopup.Hide();
+                return;
+            }
+
+            _registrationCountdownPopup.Hide();
+            RegistrationCameraStatus.Text = "Go";
+            RegistrationGestureInstruction.Text = "Hold your hand sign steady.";
+            _acceptingRegistrationGesture = true;
+        }
+
+        private void CancelRegistrationCountdown()
+        {
+            _registrationCountdownRun++;
+            _registrationCountdownPopup.Hide();
         }
     
 

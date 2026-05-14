@@ -268,7 +268,7 @@
                                             BorderThickness="0"
                                             Click="ToggleItemPassword_Click">
                                         <TextBlock x:Name="ItemPasswordEyeIcon"
-                                                   Text="&#xE890;"
+                                                   Text="&#xE9A8;"
                                                    FontFamily="Segoe MDL2 Assets"
                                                    FontSize="16"/>
                                     </Button>
@@ -662,7 +662,7 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- Change Gesture card (placeholder) -->
+                            <!-- Change Gesture card -->
                             <Border CornerRadius="16" Padding="18"
                                     Background="{ThemeResource InputBackgroundBrush}"
                                     BorderBrush="{ThemeResource InputBorderBrush}" BorderThickness="1">
@@ -676,30 +676,85 @@
                                                    Foreground="{ThemeResource SecondaryTextBrush}"/>
                                     </StackPanel>
 
-                                    <!-- Placeholder camera area -->
                                     <Border Height="100" CornerRadius="12"
                                             Background="{ThemeResource CardBackgroundBrush}"
                                             BorderBrush="{ThemeResource CardBorderBrush}" BorderThickness="1">
-                                        <StackPanel VerticalAlignment="Center"
-                                                    HorizontalAlignment="Center" Spacing="6">
-                                            <TextBlock Text="Camera" FontSize="28"
-                                                       HorizontalAlignment="Center"/>
-                                            <TextBlock Text="Gesture re-registration coming soon"
+                                        <Grid>
+                                            <Image x:Name="ChangeGestureCameraPreview"
+                                                   Stretch="UniformToFill"/>
+                                            <TextBlock x:Name="ChangeGestureCameraPlaceholder"
+                                                       Text="Camera preview"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
                                                        FontSize="13" FontWeight="SemiBold"
-                                                       TextAlignment="Center"
                                                        Foreground="{ThemeResource AccentBrush}"/>
-                                        </StackPanel>
+                                        </Grid>
                                     </Border>
 
-                                    <Button Content="Re-register Gesture (Coming Soon)"
-                                            HorizontalAlignment="Stretch"
-                                            Height="44" CornerRadius="12"
-                                            IsEnabled="False"
-                                            Background="Transparent"
-                                            BorderBrush="{ThemeResource MutedButtonBorderBrush}"
-                                            BorderThickness="2"
-                                            Foreground="{ThemeResource MutedButtonForegroundBrush}"
-                                            FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="ChangeGestureStatusText"
+                                               Text="Start the camera. Wait for the countdown before each hand sign."
+                                               FontSize="13" TextWrapping="Wrap"
+                                               Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                    <TextBlock x:Name="ChangeGestureRecordedText"
+                                               Text="No gestures recorded yet"
+                                               FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{ThemeResource PrimaryTextBrush}"/>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0"
+                                                x:Name="StartChangeGestureCameraButton"
+                                                Content="Start Camera"
+                                                Height="42" CornerRadius="12"
+                                                Background="Transparent"
+                                                BorderBrush="{ThemeResource MutedButtonBorderBrush}"
+                                                BorderThickness="2"
+                                                Foreground="{ThemeResource MutedButtonForegroundBrush}"
+                                                FontWeight="SemiBold"
+                                                Click="StartChangeGestureCameraButton_Click"/>
+                                        <Button Grid.Column="2"
+                                                x:Name="NextChangeGestureButton"
+                                                Content="Next Gesture"
+                                                Height="42" CornerRadius="12"
+                                                IsEnabled="False"
+                                                Background="Transparent"
+                                                BorderBrush="{ThemeResource MutedButtonBorderBrush}"
+                                                BorderThickness="2"
+                                                Foreground="{ThemeResource MutedButtonForegroundBrush}"
+                                                FontWeight="SemiBold"
+                                                Click="NextChangeGestureButton_Click"/>
+                                    </Grid>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0"
+                                                x:Name="RedoChangeGestureButton"
+                                                Content="Redo Gesture"
+                                                Height="42" CornerRadius="12"
+                                                IsEnabled="False"
+                                                Background="Transparent"
+                                                BorderBrush="{ThemeResource MutedButtonBorderBrush}"
+                                                BorderThickness="2"
+                                                Foreground="{ThemeResource MutedButtonForegroundBrush}"
+                                                FontWeight="SemiBold"
+                                                Click="RedoChangeGestureButton_Click"/>
+                                        <Button Grid.Column="2"
+                                                x:Name="SaveChangeGestureButton"
+                                                Content="Update Gesture"
+                                                Height="42" CornerRadius="12"
+                                                IsEnabled="False"
+                                                Background="{ThemeResource AccentBrush}"
+                                                Foreground="White" FontWeight="SemiBold"
+                                                Click="SaveChangeGestureButton_Click"/>
+                                    </Grid>
                                 </StackPanel>
                             </Border>
 
@@ -729,7 +784,7 @@
 
                                     <TextBox x:Name="ChangeGestureHintBox"
                                              Header="Gesture"
-                                             PlaceholderText="e.g. swipe direction or hand cue"
+                                             PlaceholderText="e.g. open hand, fist, or pointing cue"
                                              CornerRadius="12"/>
 
                                     <Button Content="Save Hints"

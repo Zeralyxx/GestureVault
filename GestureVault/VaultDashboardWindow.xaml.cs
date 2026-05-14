@@ -38,8 +38,8 @@ namespace GestureVault
         private TextBox? _editUrlBox;
         private TextBox? _editNoteBox;
         private TextBox? _editDescriptionBox;
-        private const string IconShowGlyph = "\uE890";
-        private const string IconHideGlyph = "\uE8F5";
+        private const string IconShowGlyph = "\uE9A8";
+        private const string IconHideGlyph = "\uE9A9";
         private const string IconCopyGlyph = "\uE8C8";
         private const string IconCheckGlyph = "\uE73E";
 
@@ -54,6 +54,14 @@ namespace GestureVault
         private bool _currentPasswordVisible = false;
         private bool _newPasswordVisible = false;
         private bool _confirmPasswordVisible = false;
+        private GestureService? _changeGestureService;
+        private readonly List<string> _changeGestureSequence = new();
+        private int _changeGestureIndex = 0;
+        private bool _waitingForNextChangeGesture = false;
+        private bool _changeGestureRecorded = false;
+        private bool _acceptingChangeGesture = false;
+        private readonly GestureCountdownPopup _changeGestureCountdownPopup = new();
+        private int _changeGestureCountdownRun = 0;
         private DateTime _lastActivity = DateTime.Now;
 
         // ── Constructor ───────────────────────────────────────────────────────
@@ -698,7 +706,8 @@ namespace GestureVault
                 };
                 if (await confirm.ShowAsync() == ContentDialogResult.Primary)
                 {
-                    vf.IsDeleted = true;
+                    _storage.RemoveFileFromItem(vf);
+                    item.Files.Remove(vf);
                     item.UpdatedAt = DateTime.Now.ToString("MMM dd, yyyy");
                     SaveItems();
                     RefreshDisplay();
@@ -846,12 +855,13 @@ namespace GestureVault
                 try
                 {
                     string restoredPath = _storage.RestoreFileToOriginalPath(vf);
-                    await ShowDialog("File restored", $"Decrypted copy restored to:\n{restoredPath}");
-                    vf.IsDeleted = false;
+                    _storage.RemoveFileFromItem(vf);
+                    item.Files.Remove(vf);
                     item.UpdatedAt = DateTime.Now.ToString("MMM dd, yyyy");
                     SaveItems();
                     RefreshDisplay();
                     OpenItem(item);
+                    await ShowDialog("File restored", $"Decrypted copy restored to:\n{restoredPath}");
                 }
                 catch (Exception ex)
                 {
@@ -997,7 +1007,10 @@ namespace GestureVault
 
         private void AddImagePreviewStrip(VaultItem item)
         {
-            var imageFiles = item.Files.Where(f => IsImageFile(f.FileName)).Take(12).ToList();
+            var imageFiles = item.Files
+                .Where(f => !f.IsDeleted && IsImageFile(f.FileName))
+                .Take(12)
+                .ToList();
             if (imageFiles.Count == 0) return;
 
             var strip = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 0, 8) };
@@ -1342,13 +1355,18 @@ namespace GestureVault
             ChangePasswordHintBox.Text = ApplicationData.Current.LocalSettings.Values["PasswordHint"] as string ?? string.Empty;
             ChangePassphraseHintBox.Text = ApplicationData.Current.LocalSettings.Values["PassphraseHint"] as string ?? string.Empty;
             ChangeGestureHintBox.Text = ApplicationData.Current.LocalSettings.Values["GestureHint"] as string ?? string.Empty;
+            StopChangeGestureRegistration();
+            ResetChangeGestureUi();
 
             SettingsOverlay.Visibility = Visibility.Visible;
             ResetIdleTimer();
         }
 
-        private void CloseSettingsButton_Click(object s, RoutedEventArgs e) =>
+        private void CloseSettingsButton_Click(object s, RoutedEventArgs e)
+        {
+            StopChangeGestureRegistration();
             SettingsOverlay.Visibility = Visibility.Collapsed;
+        }
 
         // ── Change password ───────────────────────────────────────────────────
         private void ToggleCurrentPasswordButton_Click(object s, RoutedEventArgs e) =>
@@ -1518,6 +1536,227 @@ namespace GestureVault
             settings.Values["GestureHint"] = ChangeGestureHintBox.Text.Trim();
         }
 
+        // -- Change gesture ---------------------------------------------------
+        private string ChangeGestureStepLabel() => _changeGestureIndex switch
+        {
+            0 => "First gesture",
+            1 => "Second gesture",
+            _ => "Final gesture"
+        };
+
+        private void ResetChangeGestureUi()
+        {
+            _changeGestureSequence.Clear();
+            _changeGestureIndex = 0;
+            _waitingForNextChangeGesture = false;
+            _changeGestureRecorded = false;
+            _acceptingChangeGesture = false;
+            CancelChangeGestureCountdown();
+
+            ChangeGestureCameraPlaceholder.Visibility = Visibility.Visible;
+            ChangeGestureCameraPreview.Source = null;
+            ChangeGestureStatusText.Text = "Start the camera. Wait for the countdown before each hand sign.";
+            ChangeGestureRecordedText.Text = "No gestures recorded yet";
+            StartChangeGestureCameraButton.Content = "Start Camera";
+            NextChangeGestureButton.Content = "Next Gesture";
+            NextChangeGestureButton.IsEnabled = false;
+            RedoChangeGestureButton.IsEnabled = false;
+            SaveChangeGestureButton.IsEnabled = false;
+        }
+
+        private void InitializeChangeGestureService()
+        {
+            _changeGestureService = new GestureService(DispatcherQueue.GetForCurrentThread());
+
+            _changeGestureService.FrameReady += async (s, frame) =>
+            {
+                try
+                {
+                    var bitmapSource = await ImageConverter.MatToSoftwareBitmapSource(frame);
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        ChangeGestureCameraPreview.Source = bitmapSource;
+                    });
+                }
+                catch
+                {
+                    // Skip frames that cannot be converted.
+                }
+            };
+
+            _changeGestureService.GestureDetected += (s, e) =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (!_acceptingChangeGesture)
+                        return;
+
+                    if (_changeGestureSequence.Count >= 3 || _waitingForNextChangeGesture)
+                        return;
+
+                    _changeGestureSequence.Add(e.Direction);
+                    CancelChangeGestureCountdown();
+                    _waitingForNextChangeGesture = true;
+                    _acceptingChangeGesture = false;
+                    _changeGestureRecorded = _changeGestureSequence.Count >= 3;
+
+                    ChangeGestureRecordedText.Text =
+                        $"Recorded {_changeGestureSequence.Count} of 3";
+                    ChangeGestureStatusText.Text = _changeGestureRecorded
+                        ? "All three gestures are recorded. Click Update Gesture."
+                        : $"{ChangeGestureStepLabel()} recorded. Click Next Gesture when ready.";
+                    NextChangeGestureButton.IsEnabled = !_changeGestureRecorded;
+                    RedoChangeGestureButton.IsEnabled = true;
+                    SaveChangeGestureButton.IsEnabled = _changeGestureRecorded;
+                    ResetIdleTimer();
+                });
+            };
+        }
+
+        private void StartChangeGestureCameraButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_changeGestureService == null)
+                InitializeChangeGestureService();
+
+            if (!_changeGestureService!.IsRunning)
+            {
+                try
+                {
+                    _changeGestureService.Start();
+                    ChangeGestureCameraPlaceholder.Visibility = Visibility.Collapsed;
+                    ChangeGestureStatusText.Text =
+                        $"{ChangeGestureStepLabel()}: wait for the countdown, then hold a hand sign.";
+                    StartChangeGestureCameraButton.Content = "Stop Camera";
+                    StartChangeGestureCountdown();
+                }
+                catch (Exception ex)
+                {
+                    ChangeGestureStatusText.Text = $"Camera error: {ex.Message}";
+                }
+            }
+            else
+            {
+                _changeGestureService.Stop();
+                CancelChangeGestureCountdown();
+                ChangeGestureCameraPlaceholder.Visibility = Visibility.Visible;
+                ChangeGestureCameraPreview.Source = null;
+                StartChangeGestureCameraButton.Content = "Start Camera";
+                ChangeGestureStatusText.Text = _changeGestureRecorded
+                    ? "All three gestures are recorded. Click Update Gesture."
+                    : "Camera stopped. Start it again to continue recording.";
+            }
+
+            ResetIdleTimer();
+        }
+
+        private void NextChangeGestureButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_waitingForNextChangeGesture || _changeGestureRecorded)
+                return;
+
+            _changeGestureIndex++;
+            _waitingForNextChangeGesture = false;
+            _acceptingChangeGesture = false;
+            NextChangeGestureButton.IsEnabled = false;
+            RedoChangeGestureButton.IsEnabled = false;
+            ChangeGestureStatusText.Text =
+                $"{ChangeGestureStepLabel()}: wait for the countdown, then hold a hand sign.";
+            StartChangeGestureCountdown();
+            ResetIdleTimer();
+        }
+
+        private void RedoChangeGestureButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_changeGestureSequence.Count > 0)
+                _changeGestureSequence.RemoveAt(_changeGestureSequence.Count - 1);
+
+            _changeGestureIndex = Math.Max(0, _changeGestureSequence.Count);
+            _waitingForNextChangeGesture = false;
+            _changeGestureRecorded = false;
+            _acceptingChangeGesture = false;
+            ChangeGestureRecordedText.Text = _changeGestureSequence.Count == 0
+                ? "No gestures recorded yet"
+                : $"Recorded {_changeGestureSequence.Count} of 3";
+            ChangeGestureStatusText.Text =
+                $"{ChangeGestureStepLabel()}: wait for the countdown, then hold a hand sign.";
+            NextChangeGestureButton.IsEnabled = false;
+            RedoChangeGestureButton.IsEnabled = false;
+            SaveChangeGestureButton.IsEnabled = false;
+            StartChangeGestureCountdown();
+            ResetIdleTimer();
+        }
+
+        private async void SaveChangeGestureButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_changeGestureSequence.Count < 3)
+            {
+                await ShowDialog("Gesture incomplete", "Record three gestures before saving.");
+                return;
+            }
+
+            var settings = ApplicationData.Current.LocalSettings;
+            settings.Values["RegisteredGesture"] = _changeGestureSequence[0];
+            settings.Values["RegisteredGestureSequence"] = string.Join("|", _changeGestureSequence.Take(3));
+            settings.Values["GestureHint"] = ChangeGestureHintBox.Text.Trim();
+
+            StopChangeGestureRegistration();
+            ResetChangeGestureUi();
+
+            await ShowDialog("Gesture updated",
+                "Your new gesture sequence has been saved. Lock the vault and sign in again to use it.");
+            ResetIdleTimer();
+        }
+
+        private void StopChangeGestureRegistration()
+        {
+            _changeGestureService?.Stop();
+            _changeGestureService?.Dispose();
+            _changeGestureService = null;
+            _acceptingChangeGesture = false;
+            CancelChangeGestureCountdown();
+        }
+
+        private async void StartChangeGestureCountdown()
+        {
+            if (_changeGestureService == null || !_changeGestureService.IsRunning || _changeGestureRecorded)
+                return;
+
+            int countdownRun = ++_changeGestureCountdownRun;
+            _acceptingChangeGesture = false;
+            for (int i = 3; i >= 1; i--)
+            {
+                if (countdownRun != _changeGestureCountdownRun || _changeGestureService == null || !_changeGestureService.IsRunning || _waitingForNextChangeGesture || _changeGestureRecorded)
+                {
+                    _changeGestureCountdownPopup.Hide();
+                    return;
+                }
+
+                ChangeGestureStatusText.Text = i.ToString();
+                _changeGestureCountdownPopup.Show(
+                    this.Content.XamlRoot,
+                    $"{ChangeGestureStepLabel()} arming",
+                    i,
+                    "Get your new hand sign ready.");
+                await Task.Delay(1000);
+            }
+
+            if (countdownRun != _changeGestureCountdownRun || _changeGestureService == null || !_changeGestureService.IsRunning || _waitingForNextChangeGesture || _changeGestureRecorded)
+            {
+                _changeGestureCountdownPopup.Hide();
+                return;
+            }
+
+            _changeGestureCountdownPopup.Hide();
+            ChangeGestureStatusText.Text = "Go - hold your hand sign steady.";
+            _acceptingChangeGesture = true;
+        }
+
+        private void CancelChangeGestureCountdown()
+        {
+            _changeGestureCountdownRun++;
+            _changeGestureCountdownPopup.Hide();
+        }
+
 
 
         private void SaveSettingsButton_Click(object s, RoutedEventArgs e)
@@ -1541,6 +1780,7 @@ namespace GestureVault
 
             ApplyTheme(_isLightMode);
             StartAutoLockTimer();
+            StopChangeGestureRegistration();
             SettingsOverlay.Visibility = Visibility.Collapsed;
         }
 
