@@ -269,6 +269,10 @@ namespace GestureVault.Services
         public void RemoveFileFromItem(VaultFile vaultFile)
         {
             EncryptionService.SecureDeleteTemp(vaultFile.StoredAt);
+            if (File.Exists(vaultFile.StoredAt))
+            {
+                File.Delete(vaultFile.StoredAt);
+            }
         }
 
         public void DeleteItem(VaultItem item)

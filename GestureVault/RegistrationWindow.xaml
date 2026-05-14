@@ -144,7 +144,7 @@
                                                 BorderBrush="{ThemeResource InputBorderBrush}"
                                                 BorderThickness="2"
                                                 Background="{ThemeResource InputBackgroundBrush}"/>
-                                        <TextBox x:Name="NewPasswordTextBox" IsReadOnly="True"
+                                        <TextBox x:Name="NewPasswordTextBox"
                                                  Visibility="Collapsed"
                                                  Height="28" Margin="18,0,60,0"
                                                  VerticalAlignment="Center"
@@ -163,7 +163,7 @@
                                                 Margin="0,0,12,0"
                                                 Background="Transparent" BorderThickness="0"
                                                 Click="ToggleNewPassword_Click">
-                                            <TextBlock x:Name="EyeIcon1" Text="&#xE9A8;" FontFamily="Segoe MDL2 Assets" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                            <TextBlock x:Name="EyeIcon1" Text="&#xE890;" FontFamily="Segoe MDL2 Assets" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                         </Button>
                                     </Grid>
                                 </StackPanel>
@@ -186,7 +186,7 @@
                                                 BorderBrush="{ThemeResource InputBorderBrush}"
                                                 BorderThickness="2"
                                                 Background="{ThemeResource InputBackgroundBrush}"/>
-                                        <TextBox x:Name="ConfirmPasswordTextBox" IsReadOnly="True"
+                                        <TextBox x:Name="ConfirmPasswordTextBox"
                                                  Visibility="Collapsed"
                                                  Height="28" Margin="18,0,60,0"
                                                  VerticalAlignment="Center"
@@ -205,7 +205,7 @@
                                                 Margin="0,0,12,0"
                                                 Background="Transparent" BorderThickness="0"
                                                 Click="ToggleConfirmPassword_Click">
-                                            <TextBlock x:Name="EyeIcon2" Text="&#xE9A8;" FontFamily="Segoe MDL2 Assets" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                            <TextBlock x:Name="EyeIcon2" Text="&#xE890;" FontFamily="Segoe MDL2 Assets" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                         </Button>
                                     </Grid>
                                 </StackPanel>

@@ -268,7 +268,7 @@
                                             BorderThickness="0"
                                             Click="ToggleItemPassword_Click">
                                         <TextBlock x:Name="ItemPasswordEyeIcon"
-                                                   Text="&#xE9A8;"
+                                                   Text="&#xE890;"
                                                    FontFamily="Segoe MDL2 Assets"
                                                    FontSize="16"/>
                                     </Button>
@@ -523,15 +523,18 @@
                                                      Padding="12,0,74,0"
                                                      CornerRadius="12"/>
                                             <Button x:Name="ToggleCurrentPasswordButton"
-                                                    Content="Show"
-                                                    Width="58" Height="32"
+                                                    Width="40" Height="32"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Center"
                                                     Margin="0,0,8,0"
                                                     Background="Transparent"
                                                     BorderThickness="0"
                                                     Foreground="{ThemeResource MutedButtonForegroundBrush}"
-                                                    Click="ToggleCurrentPasswordButton_Click"/>
+                                                    Click="ToggleCurrentPasswordButton_Click">
+                                                <TextBlock Text="&#xE890;"
+                                                           FontFamily="Segoe MDL2 Assets"
+                                                           FontSize="16"/>
+                                            </Button>
                                         </Grid>
                                     </StackPanel>
 
@@ -552,15 +555,18 @@
                                                      Padding="12,0,74,0"
                                                      CornerRadius="12"/>
                                             <Button x:Name="ToggleNewPasswordButton"
-                                                    Content="Show"
-                                                    Width="58" Height="32"
+                                                    Width="40" Height="32"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Center"
                                                     Margin="0,0,8,0"
                                                     Background="Transparent"
                                                     BorderThickness="0"
                                                     Foreground="{ThemeResource MutedButtonForegroundBrush}"
-                                                    Click="ToggleNewPasswordButton_Click"/>
+                                                    Click="ToggleNewPasswordButton_Click">
+                                                <TextBlock Text="&#xE890;"
+                                                           FontFamily="Segoe MDL2 Assets"
+                                                           FontSize="16"/>
+                                            </Button>
                                         </Grid>
                                     </StackPanel>
 
@@ -581,15 +587,18 @@
                                                      Padding="12,0,74,0"
                                                      CornerRadius="12"/>
                                             <Button x:Name="ToggleConfirmPasswordButton"
-                                                    Content="Show"
-                                                    Width="58" Height="32"
+                                                    Width="40" Height="32"
                                                     HorizontalAlignment="Right"
                                                     VerticalAlignment="Center"
                                                     Margin="0,0,8,0"
                                                     Background="Transparent"
                                                     BorderThickness="0"
                                                     Foreground="{ThemeResource MutedButtonForegroundBrush}"
-                                                    Click="ToggleConfirmPasswordButton_Click"/>
+                                                    Click="ToggleConfirmPasswordButton_Click">
+                                                <TextBlock Text="&#xE890;"
+                                                           FontFamily="Segoe MDL2 Assets"
+                                                           FontSize="16"/>
+                                            </Button>
                                         </Grid>
                                     </StackPanel>
 

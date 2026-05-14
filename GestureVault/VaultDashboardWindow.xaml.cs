@@ -38,13 +38,14 @@ namespace GestureVault
         private TextBox? _editUrlBox;
         private TextBox? _editNoteBox;
         private TextBox? _editDescriptionBox;
-        private const string IconShowGlyph = "\uE9A8";
+        private const string IconShowGlyph = "\uE890";
         private const string IconHideGlyph = "\uE9A9";
         private const string IconCopyGlyph = "\uE8C8";
         private const string IconCheckGlyph = "\uE73E";
 
         // Tracks temp files open so we can clean them on lock
         private readonly List<string> _openTempFiles = new();
+        private readonly HashSet<string> _previewTempFiles = new();
 
         // ── Auto-lock ─────────────────────────────────────────────────────────
         private DispatcherQueueTimer? _autoLockTimer;
@@ -542,6 +543,7 @@ namespace GestureVault
             };
 
             ViewItemContent.Children.Clear();
+            CleanupPreviewTempFiles();
             AddEditableRow("Title", item.Title, textBox => _editTitleBox = textBox, !_isEditingItem);
 
             switch (item.Type)
@@ -624,11 +626,12 @@ namespace GestureVault
                     TextWrapping = TextWrapping.Wrap,
                     Foreground = new SolidColorBrush(SecondaryText)
                 });
-                return;
             }
-
-            foreach (var vf in activeFiles)
-                ViewItemContent.Children.Add(BuildFileRow(item, vf));
+            else
+            {
+                foreach (var vf in activeFiles)
+                    ViewItemContent.Children.Add(BuildFileRow(item, vf));
+            }
 
             if (removedFiles.Count > 0)
             {
@@ -708,12 +711,11 @@ namespace GestureVault
                 };
                 if (await confirm.ShowAsync() == ContentDialogResult.Primary)
                 {
-                    _storage.RemoveFileFromItem(vf);
-                    item.Files.Remove(vf);
+                    vf.IsDeleted = true;
                     item.UpdatedAt = DateTime.Now.ToString("MMM dd, yyyy");
                     SaveItems();
                     RefreshDisplay();
-                    OpenItem(item);
+                    RenderSelectedItem();
                 }
                 ResetIdleTimer();
             };
@@ -856,13 +858,16 @@ namespace GestureVault
             {
                 try
                 {
+                    ViewItemContent.Children.Clear();
+                    CleanupPreviewTempFiles();
+
                     string restoredPath = _storage.RestoreFileToOriginalPath(vf);
                     _storage.RemoveFileFromItem(vf);
                     item.Files.Remove(vf);
                     item.UpdatedAt = DateTime.Now.ToString("MMM dd, yyyy");
                     SaveItems();
                     RefreshDisplay();
-                    OpenItem(item);
+                    RenderSelectedItem();
                     await ShowDialog("File restored", $"Decrypted copy restored to:\n{restoredPath}");
                 }
                 catch (Exception ex)
@@ -893,12 +898,15 @@ namespace GestureVault
                 };
                 if (await confirm.ShowAsync() == ContentDialogResult.Primary)
                 {
+                    ViewItemContent.Children.Clear();
+                    CleanupPreviewTempFiles();
+
                     _storage.RemoveFileFromItem(vf);
                     item.Files.Remove(vf);
                     item.UpdatedAt = DateTime.Now.ToString("MMM dd, yyyy");
                     SaveItems();
                     RefreshDisplay();
-                    OpenItem(item);
+                    RenderSelectedItem();
                 }
             };
             Grid.SetColumn(permanentBtn, 3);
@@ -1050,6 +1058,7 @@ namespace GestureVault
                 try
                 {
                     string tempPath = _storage.DecryptFileToTemp(vf);
+                    _previewTempFiles.Add(tempPath);
                     _openTempFiles.Add(tempPath);
                     return new Border
                     {
@@ -1088,6 +1097,24 @@ namespace GestureVault
                     VerticalAlignment = VerticalAlignment.Center
                 }
             };
+        }
+
+        private void CleanupPreviewTempFiles()
+        {
+            foreach (var tempPath in _previewTempFiles.ToList())
+            {
+                try
+                {
+                    _storage.CleanupTempFile(tempPath);
+                    _openTempFiles.RemoveAll(t => t == tempPath);
+                }
+                catch
+                {
+                    // Best effort: a bitmap may release its file handle slightly later.
+                }
+            }
+
+            _previewTempFiles.Clear();
         }
 
         private static bool IsImageFile(string fileName)
@@ -1162,11 +1189,11 @@ namespace GestureVault
 
                 var copyBtn = new Button
                 {
-                    Content = IconGlyph(IconCopyGlyph),
-                    Background = new SolidColorBrush(Colors.Transparent),
-                    BorderThickness = new Thickness(0),
-                    Padding = new Thickness(6),
-                    VerticalAlignment = VerticalAlignment.Center
+                    Content = "Copy password",
+                    Style = (Style)((FrameworkElement)this.Content).Resources["CardButtonStyle"],
+                    Padding = new Thickness(12, 6, 12, 6),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    MinWidth = 116
                 };
                 copyBtn.Click += async (s, e) =>
                 {
@@ -1175,9 +1202,9 @@ namespace GestureVault
                     Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
 
                     // Brief visual feedback
-                    copyBtn.Content = IconGlyph(IconCheckGlyph);
+                    copyBtn.Content = "Copied";
                     await System.Threading.Tasks.Task.Delay(1500);
-                    copyBtn.Content = IconGlyph(IconCopyGlyph);
+                    copyBtn.Content = "Copy password";
                 };
                 Grid.SetColumn(copyBtn, 2);
 

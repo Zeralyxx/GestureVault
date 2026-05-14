@@ -56,14 +56,14 @@ namespace GestureVault
                 NewPasswordTextBox.Text = NewPasswordBox.Password;
                 NewPasswordTextBox.Visibility = Visibility.Visible;
                 NewPasswordBox.Visibility = Visibility.Collapsed;
-                EyeIcon1.Text = _newPasswordVisible ? "\uE9A9" : "\uE9A8";
+                EyeIcon1.Text = _newPasswordVisible ? "\uE9A9" : "\uE890";
             }
             else
             {
                 NewPasswordBox.Password = NewPasswordTextBox.Text;
                 NewPasswordBox.Visibility = Visibility.Visible;
                 NewPasswordTextBox.Visibility = Visibility.Collapsed;
-                EyeIcon1.Text = _newPasswordVisible ? "\uE9A9" : "\uE9A8";
+                EyeIcon1.Text = _newPasswordVisible ? "\uE9A9" : "\uE890";
             }
         }
 
@@ -75,14 +75,14 @@ namespace GestureVault
                 ConfirmPasswordTextBox.Text = ConfirmPasswordBox.Password;
                 ConfirmPasswordTextBox.Visibility = Visibility.Visible;
                 ConfirmPasswordBox.Visibility = Visibility.Collapsed;
-                EyeIcon2.Text = _confirmPasswordVisible ? "\uE9A9" : "\uE9A8";
+                EyeIcon2.Text = _confirmPasswordVisible ? "\uE9A9" : "\uE890";
             }
             else
             {
                 ConfirmPasswordBox.Password = ConfirmPasswordTextBox.Text;
                 ConfirmPasswordBox.Visibility = Visibility.Visible;
                 ConfirmPasswordTextBox.Visibility = Visibility.Collapsed;
-                EyeIcon2.Text = _confirmPasswordVisible ? "\uE9A9" : "\uE9A8";
+                EyeIcon2.Text = _confirmPasswordVisible ? "\uE9A9" : "\uE890";
             }
         }
 
