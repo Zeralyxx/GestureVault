@@ -49,6 +49,7 @@ namespace GestureVault
         // ── Auto-lock ─────────────────────────────────────────────────────────
         private DispatcherQueueTimer? _autoLockTimer;
         private int _autoLockMinutes = 5;
+        private int _authLockoutSeconds = 30;
         private bool _autoLockEnabled = true;
         private bool _isLightMode = true;
         private bool _currentPasswordVisible = false;
@@ -60,6 +61,7 @@ namespace GestureVault
         private bool _waitingForNextChangeGesture = false;
         private bool _changeGestureRecorded = false;
         private bool _acceptingChangeGesture = false;
+        private string? _pendingChangeGesture;
         private readonly GestureCountdownPopup _changeGestureCountdownPopup = new();
         private int _changeGestureCountdownRun = 0;
         private DateTime _lastActivity = DateTime.Now;
@@ -1318,6 +1320,7 @@ namespace GestureVault
             var settings = ApplicationData.Current.LocalSettings;
             _autoLockEnabled = settings.Values["AutoLockEnabled"] as bool? ?? true;
             _autoLockMinutes = settings.Values["AutoLockMinutes"] as int? ?? 5;
+            _authLockoutSeconds = settings.Values["AuthLockoutSeconds"] as int? ?? 30;
             _isLightMode = settings.Values["IsLightMode"] as bool? ?? true;
 
             AutoLockToggle.IsOn = _autoLockEnabled;
@@ -1332,6 +1335,14 @@ namespace GestureVault
                 10 => 2,
                 30 => 3,
                 _ => 1
+            };
+            AuthLockoutCombo.SelectedIndex = _authLockoutSeconds switch
+            {
+                30 => 0,
+                60 => 1,
+                300 => 2,
+                600 => 3,
+                _ => 0
             };
             ApplyTheme(_isLightMode);
         }
@@ -1551,16 +1562,18 @@ namespace GestureVault
             _waitingForNextChangeGesture = false;
             _changeGestureRecorded = false;
             _acceptingChangeGesture = false;
+            _pendingChangeGesture = null;
             CancelChangeGestureCountdown();
 
             ChangeGestureCameraPlaceholder.Visibility = Visibility.Visible;
             ChangeGestureCameraPreview.Source = null;
             ChangeGestureStatusText.Text = "Start the camera. Wait for the countdown before each hand sign.";
+            ChangeGestureDetectedText.Text = "No gesture detected yet";
             ChangeGestureRecordedText.Text = "No gestures recorded yet";
             StartChangeGestureCameraButton.Content = "Start Camera";
             NextChangeGestureButton.Content = "Next Gesture";
             NextChangeGestureButton.IsEnabled = false;
-            RedoChangeGestureButton.IsEnabled = false;
+            UpdateChangeGestureBackButton(false, "Previous Gesture");
             SaveChangeGestureButton.IsEnabled = false;
         }
 
@@ -1584,6 +1597,18 @@ namespace GestureVault
                 }
             };
 
+            _changeGestureService.GestureObserved += (s, e) =>
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (!_acceptingChangeGesture || _waitingForNextChangeGesture || _changeGestureRecorded)
+                        return;
+
+                    ChangeGestureDetectedText.Text = $"Seeing: {GestureDirectionToLabel(e.Direction)}";
+                    ChangeGestureStatusText.Text = "Hold it steady until the app asks you to confirm it.";
+                });
+            };
+
             _changeGestureService.GestureDetected += (s, e) =>
             {
                 DispatcherQueue.TryEnqueue(() =>
@@ -1594,20 +1619,17 @@ namespace GestureVault
                     if (_changeGestureSequence.Count >= 3 || _waitingForNextChangeGesture)
                         return;
 
-                    _changeGestureSequence.Add(e.Direction);
                     CancelChangeGestureCountdown();
                     _waitingForNextChangeGesture = true;
                     _acceptingChangeGesture = false;
-                    _changeGestureRecorded = _changeGestureSequence.Count >= 3;
+                    _pendingChangeGesture = e.Direction;
 
-                    ChangeGestureRecordedText.Text =
-                        $"Recorded {_changeGestureSequence.Count} of 3";
-                    ChangeGestureStatusText.Text = _changeGestureRecorded
-                        ? "All three gestures are recorded. Click Update Gesture."
-                        : $"{ChangeGestureStepLabel()} recorded. Click Next Gesture when ready.";
-                    NextChangeGestureButton.IsEnabled = !_changeGestureRecorded;
-                    RedoChangeGestureButton.IsEnabled = true;
-                    SaveChangeGestureButton.IsEnabled = _changeGestureRecorded;
+                    ChangeGestureDetectedText.Text = $"{GestureDirectionToLabel(e.Direction)} detected";
+                    ChangeGestureStatusText.Text = "Check the detected label. If it is right, record it. If not, redo.";
+                    NextChangeGestureButton.Content = "Record This Gesture";
+                    NextChangeGestureButton.IsEnabled = true;
+                    UpdateChangeGestureBackButton(true, "Redo Gesture");
+                    SaveChangeGestureButton.IsEnabled = false;
                     ResetIdleTimer();
                 });
             };
@@ -1651,14 +1673,46 @@ namespace GestureVault
 
         private void NextChangeGestureButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!_waitingForNextChangeGesture || _changeGestureRecorded)
+            if (!_waitingForNextChangeGesture)
+                return;
+
+            if (_pendingChangeGesture != null)
+            {
+                _changeGestureSequence.Add(_pendingChangeGesture);
+                _pendingChangeGesture = null;
+                _changeGestureRecorded = _changeGestureSequence.Count >= 3;
+
+                UpdateChangeGestureRecordedSummary();
+                UpdateChangeGestureBackButton(_changeGestureSequence.Count > 0, "Previous Gesture");
+                SaveChangeGestureButton.IsEnabled = _changeGestureRecorded;
+
+                if (_changeGestureRecorded)
+                {
+                    NextChangeGestureButton.IsEnabled = false;
+                    ChangeGestureDetectedText.Text = "All gestures recorded";
+                    ChangeGestureStatusText.Text = "All three gestures are recorded. Use Previous Gesture to change the last one, or click Update Gesture.";
+                    ResetIdleTimer();
+                    return;
+                }
+
+                NextChangeGestureButton.Content = "Next Gesture";
+                NextChangeGestureButton.IsEnabled = true;
+                ChangeGestureDetectedText.Text = $"Gesture {_changeGestureSequence.Count} recorded";
+                ChangeGestureStatusText.Text = "Captured above. Click Next Gesture when ready.";
+                ResetIdleTimer();
+                return;
+            }
+
+            if (_changeGestureRecorded)
                 return;
 
             _changeGestureIndex++;
             _waitingForNextChangeGesture = false;
             _acceptingChangeGesture = false;
+            _pendingChangeGesture = null;
             NextChangeGestureButton.IsEnabled = false;
-            RedoChangeGestureButton.IsEnabled = false;
+            UpdateChangeGestureBackButton(_changeGestureSequence.Count > 0, "Previous Gesture");
+            ChangeGestureDetectedText.Text = "Ready for next gesture";
             ChangeGestureStatusText.Text =
                 $"{ChangeGestureStepLabel()}: wait for the countdown, then hold a hand sign.";
             StartChangeGestureCountdown();
@@ -1667,25 +1721,71 @@ namespace GestureVault
 
         private void RedoChangeGestureButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_changeGestureSequence.Count > 0)
+            if (_pendingChangeGesture != null)
+            {
+                _pendingChangeGesture = null;
+            }
+            else if (_changeGestureSequence.Count > 0)
+            {
                 _changeGestureSequence.RemoveAt(_changeGestureSequence.Count - 1);
+            }
 
             _changeGestureIndex = Math.Max(0, _changeGestureSequence.Count);
             _waitingForNextChangeGesture = false;
             _changeGestureRecorded = false;
             _acceptingChangeGesture = false;
-            ChangeGestureRecordedText.Text = _changeGestureSequence.Count == 0
-                ? "No gestures recorded yet"
-                : $"Recorded {_changeGestureSequence.Count} of 3";
+            _pendingChangeGesture = null;
+            UpdateChangeGestureRecordedSummary();
+            ChangeGestureDetectedText.Text = "Ready to record again";
             ChangeGestureStatusText.Text =
                 $"{ChangeGestureStepLabel()}: wait for the countdown, then hold a hand sign.";
             NextChangeGestureButton.IsEnabled = false;
-            RedoChangeGestureButton.IsEnabled = false;
+            NextChangeGestureButton.Content = "Next Gesture";
+            UpdateChangeGestureBackButton(_changeGestureSequence.Count > 0, "Previous Gesture");
             SaveChangeGestureButton.IsEnabled = false;
             StartChangeGestureCountdown();
             ResetIdleTimer();
         }
 
+        private void UpdateChangeGestureBackButton(bool isEnabled, string text)
+        {
+            RedoChangeGestureButton.Content = text;
+            RedoChangeGestureButton.IsEnabled = isEnabled;
+        }
+
+        private void UpdateChangeGestureRecordedSummary()
+        {
+            ChangeGestureRecordedText.Text = _changeGestureSequence.Count == 0
+                ? "No gestures recorded yet"
+                : $"Captured: {string.Join(" -> ", _changeGestureSequence.Select(GestureDirectionToLabel))}";
+        }
+
+        private static string GestureDirectionToLabel(string direction) => direction switch
+        {
+            "OPEN_HAND" => "Open hand",
+            "FIST" => "Fist",
+            "POINT" => "Point",
+            "THUMB_UP" => "Thumbs up",
+            "THUMB_DOWN" => "Thumbs down",
+            "VICTORY" => "Victory",
+            "I_LOVE_YOU" => "I love you",
+            "OK_SIGN" => "OK sign",
+            "ROCK" => "Rock",
+            "THREE" => "Three fingers",
+            "FOUR" => "Four fingers",
+            "CALL_ME" => "Call me",
+            _ => direction
+        };
+
+        private void SaveChangeGestureSequence()
+        {
+            var settings = ApplicationData.Current.LocalSettings;
+            string savedSequence = string.Join("|", _changeGestureSequence.Take(3));
+            settings.Values["RegisteredGesture"] = _changeGestureSequence[0];
+            settings.Values["RegisteredGestureSequence"] = savedSequence;
+            settings.Values["GestureHint"] = ChangeGestureHintBox.Text.Trim();
+            AuthAttemptService.Reset("Gesture");
+        }
         private async void SaveChangeGestureButton_Click(object sender, RoutedEventArgs e)
         {
             if (_changeGestureSequence.Count < 3)
@@ -1694,10 +1794,7 @@ namespace GestureVault
                 return;
             }
 
-            var settings = ApplicationData.Current.LocalSettings;
-            settings.Values["RegisteredGesture"] = _changeGestureSequence[0];
-            settings.Values["RegisteredGestureSequence"] = string.Join("|", _changeGestureSequence.Take(3));
-            settings.Values["GestureHint"] = ChangeGestureHintBox.Text.Trim();
+            SaveChangeGestureSequence();
 
             StopChangeGestureRegistration();
             ResetChangeGestureUi();
@@ -1723,6 +1820,7 @@ namespace GestureVault
 
             int countdownRun = ++_changeGestureCountdownRun;
             _acceptingChangeGesture = false;
+            _pendingChangeGesture = null;
             for (int i = 3; i >= 1; i--)
             {
                 if (countdownRun != _changeGestureCountdownRun || _changeGestureService == null || !_changeGestureService.IsRunning || _waitingForNextChangeGesture || _changeGestureRecorded)
@@ -1771,12 +1869,23 @@ namespace GestureVault
                 3 => 30,
                 _ => 5
             };
+            _authLockoutSeconds = AuthLockoutCombo.SelectedIndex switch
+            {
+                0 => 30,
+                1 => 60,
+                2 => 300,
+                3 => 600,
+                _ => 30
+            };
 
             var settings = ApplicationData.Current.LocalSettings;
             settings.Values["AutoLockEnabled"] = _autoLockEnabled;
             settings.Values["AutoLockMinutes"] = _autoLockMinutes;
+            settings.Values["AuthLockoutSeconds"] = _authLockoutSeconds;
             settings.Values["IsLightMode"] = _isLightMode;
             SaveHints();
+            if (_changeGestureSequence.Count >= 3)
+                SaveChangeGestureSequence();
 
             ApplyTheme(_isLightMode);
             StartAutoLockTimer();

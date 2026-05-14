@@ -472,6 +472,15 @@
                                 <ComboBoxItem Content="30 minutes"/>
                             </ComboBox>
 
+                            <ComboBox x:Name="AuthLockoutCombo" Header="Failed-login timeout"
+                                      SelectedIndex="0" HorizontalAlignment="Stretch"
+                                      CornerRadius="12">
+                                <ComboBoxItem Content="30 seconds"/>
+                                <ComboBoxItem Content="1 minute"/>
+                                <ComboBoxItem Content="5 minutes"/>
+                                <ComboBoxItem Content="10 minutes"/>
+                            </ComboBox>
+
                             <ToggleSwitch x:Name="LightModeToggle"
                                           Header="Light mode" IsOn="True"/>
 
@@ -676,7 +685,7 @@
                                                    Foreground="{ThemeResource SecondaryTextBrush}"/>
                                     </StackPanel>
 
-                                    <Border Height="100" CornerRadius="12"
+                                    <Border Height="220" CornerRadius="12"
                                             Background="{ThemeResource CardBackgroundBrush}"
                                             BorderBrush="{ThemeResource CardBorderBrush}" BorderThickness="1">
                                         <Grid>
@@ -695,6 +704,19 @@
                                                Text="Start the camera. Wait for the countdown before each hand sign."
                                                FontSize="13" TextWrapping="Wrap"
                                                Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                    <Border CornerRadius="12" Padding="12"
+                                            Background="{ThemeResource CardBackgroundBrush}"
+                                            BorderBrush="{ThemeResource CardBorderBrush}" BorderThickness="1">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Text="Detected gesture"
+                                                       FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{ThemeResource SecondaryTextBrush}"/>
+                                            <TextBlock x:Name="ChangeGestureDetectedText"
+                                                       Text="No gesture detected yet"
+                                                       FontSize="15" FontWeight="SemiBold"
+                                                       Foreground="{ThemeResource PrimaryTextBrush}"/>
+                                        </StackPanel>
+                                    </Border>
                                     <TextBlock x:Name="ChangeGestureRecordedText"
                                                Text="No gestures recorded yet"
                                                FontSize="13" FontWeight="SemiBold"
@@ -709,6 +731,7 @@
                                         <Button Grid.Column="0"
                                                 x:Name="StartChangeGestureCameraButton"
                                                 Content="Start Camera"
+                                                HorizontalAlignment="Stretch"
                                                 Height="42" CornerRadius="12"
                                                 Background="Transparent"
                                                 BorderBrush="{ThemeResource MutedButtonBorderBrush}"
@@ -719,6 +742,7 @@
                                         <Button Grid.Column="2"
                                                 x:Name="NextChangeGestureButton"
                                                 Content="Next Gesture"
+                                                HorizontalAlignment="Stretch"
                                                 Height="42" CornerRadius="12"
                                                 IsEnabled="False"
                                                 Background="Transparent"
@@ -737,7 +761,8 @@
                                         </Grid.ColumnDefinitions>
                                         <Button Grid.Column="0"
                                                 x:Name="RedoChangeGestureButton"
-                                                Content="Redo Gesture"
+                                                Content="Previous Gesture"
+                                                HorizontalAlignment="Stretch"
                                                 Height="42" CornerRadius="12"
                                                 IsEnabled="False"
                                                 Background="Transparent"
@@ -749,6 +774,7 @@
                                         <Button Grid.Column="2"
                                                 x:Name="SaveChangeGestureButton"
                                                 Content="Update Gesture"
+                                                HorizontalAlignment="Stretch"
                                                 Height="42" CornerRadius="12"
                                                 IsEnabled="False"
                                                 Background="{ThemeResource AccentBrush}"

@@ -29,6 +29,8 @@
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\Models\gesture_recognizer.task" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Assets\Models\gesture_recognizer.task')" />
     <Content Include="Assets\Models\GestureModel.zip" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Assets\Models\GestureModel.zip')" />
+    <Content Include="Models\gesture_recognizer.task" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Models\gesture_recognizer.task')" />
+    <Content Include="Models\GestureModel.zip" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Models\GestureModel.zip')" />
     <Content Include="Tools\mediapipe_gesture_recognizer.py" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
@@ -53,6 +55,11 @@
 	<PackageReference Include="OpenCvSharp4" Version="4.13.0.20260302" />
 	<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260302" />
     <PackageReference Include="System.Speech" Version="10.0.7" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="RegistrationWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="VaultDashboardWindow.xaml">

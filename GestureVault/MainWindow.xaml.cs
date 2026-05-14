@@ -50,6 +50,12 @@ namespace GestureVault
         // ── Continue button ───────────────────────────────────────────────────
         private void ContinueButton_Click(object sender, RoutedEventArgs e)
         {
+            if (AuthAttemptService.IsLocked("Password", out string lockoutMessage))
+            {
+                ShowDialog("Password locked", lockoutMessage);
+                return;
+            }
+
             string entered = _isPasswordVisible
                 ? PasswordTextBox.Text
                 : MasterPasswordBox.Password;
@@ -65,13 +71,16 @@ namespace GestureVault
 
             if (storedHash == null || !PasswordService.VerifyPassword(entered, storedHash))
             {
+                string remainingMessage = AuthAttemptService.RegisterFailure("Password");
                 ShowDialog("Incorrect password",
-                    "The password you entered is incorrect. Please try again.");
+                    $"The password you entered is incorrect. {remainingMessage}");
 
                 MasterPasswordBox.Password = string.Empty;
                 PasswordTextBox.Text = string.Empty;
                 return;
             }
+
+            AuthAttemptService.Reset("Password");
 
             // Check if hash needs upgrading
             if (PasswordService.NeedsRehash(storedHash))

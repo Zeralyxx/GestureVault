@@ -17,6 +17,7 @@ namespace GestureVault.Services
     public class GestureService : IDisposable
     {
         public event EventHandler<Mat>? FrameReady;
+        public event EventHandler<GestureDetectedEventArgs>? GestureObserved;
         public event EventHandler<GestureDetectedEventArgs>? GestureDetected;
 
         public bool IsRunning { get; private set; }
@@ -34,7 +35,10 @@ namespace GestureVault.Services
         private const int SignWindowSize = 8;
         private const int StableSignFramesRequired = 5;
         private const int GestureCooldownMs = 900;
+        private const int ObservationCooldownMs = 250;
         private DateTime _lastGestureAt = DateTime.MinValue;
+        private DateTime _lastObservationAt = DateTime.MinValue;
+        private string? _lastObservedSign;
 
         public GestureService(DispatcherQueue dispatcher)
         {
@@ -83,6 +87,7 @@ namespace GestureVault.Services
             _cts = null;
             _captureTask = null;
             _recentSigns.Clear();
+            _lastObservedSign = null;
         }
 
         private void CaptureLoop(CancellationToken token)
@@ -107,7 +112,9 @@ namespace GestureVault.Services
                     previewClone.Dispose();
                 });
 
-                TrackStableSign(DetectHandSign(frame));
+                string? detectedSign = DetectHandSign(frame);
+                TrackObservedSign(detectedSign);
+                TrackStableSign(detectedSign);
                 Thread.Sleep(33);
             }
         }
@@ -174,13 +181,14 @@ namespace GestureVault.Services
             if (LooksLikeFace(frame, rect, area, solidity, extent, aspect, convexityDefectCount))
                 return null;
 
-            if (aspect < 0.66 && rect.Height > rect.Width * 1.35 && solidity < 0.92)
-                return "POINT";
-
-            if (solidity < 0.76 || convexityDefectCount >= 3 || (approx.Length >= 10 && extent < 0.58))
+            if (convexityDefectCount >= 3 || (approx.Length >= 12 && extent < 0.50))
                 return "OPEN_HAND";
 
-            if (solidity >= 0.78 && extent >= 0.42 && !LooksTooOvalForFist(aspect, extent, convexityDefectCount))
+            if (aspect < 0.66 && rect.Height > rect.Width * 1.35 && convexityDefectCount <= 2)
+                return "POINT";
+
+            if (solidity >= 0.64 && extent >= 0.34 && convexityDefectCount <= 2 &&
+                aspect > 0.42 && aspect < 1.55)
                 return "FIST";
 
             return null;
@@ -296,6 +304,28 @@ namespace GestureVault.Services
             _dispatcher.TryEnqueue(() =>
             {
                 GestureDetected?.Invoke(this, new GestureDetectedEventArgs(sign));
+            });
+        }
+
+        private void TrackObservedSign(string? sign)
+        {
+            if (string.IsNullOrWhiteSpace(sign))
+            {
+                _lastObservedSign = null;
+                return;
+            }
+
+            bool changed = sign != _lastObservedSign;
+            bool cooledDown = (DateTime.UtcNow - _lastObservationAt).TotalMilliseconds >= ObservationCooldownMs;
+            if (!changed && !cooledDown)
+                return;
+
+            _lastObservedSign = sign;
+            _lastObservationAt = DateTime.UtcNow;
+
+            _dispatcher.TryEnqueue(() =>
+            {
+                GestureObserved?.Invoke(this, new GestureDetectedEventArgs(sign));
             });
         }
 

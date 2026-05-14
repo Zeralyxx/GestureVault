@@ -36,6 +36,7 @@ namespace GestureVault
             // ── Success ───────────────────────────────────────────────────────
             _voiceService.PassphraseVerified += (s, e) =>
             {
+                AuthAttemptService.Reset("Voice");
                 VoiceStatusText.Text = "Voice verified ✓";
                 VoiceInstructionText.Text = "Access granted.";
                 DetectedPhraseText.Text = "Verified. Continuing...";
@@ -59,13 +60,21 @@ namespace GestureVault
             // ── Failure ───────────────────────────────────────────────────────
             _voiceService.VerificationFailed += (s, e) =>
             {
+                string remainingMessage = AuthAttemptService.RegisterFailure("Voice");
                 VoiceStatusText.Text = "Not recognized";
-                VoiceInstructionText.Text = e.Reason;
+                VoiceInstructionText.Text = $"{e.Reason} {remainingMessage}";
                 DetectedPhraseText.Text = string.IsNullOrWhiteSpace(e.HeardText)
                     ? "Ready to try again."
                     : e.HeardText;
 
-                // Re-enable button so user can retry
+                if (AuthAttemptService.IsLocked("Voice", out string lockoutMessage))
+                {
+                    VoiceInstructionText.Text = lockoutMessage;
+                    StartListeningButton.Content = "Locked";
+                    StartListeningButton.IsEnabled = false;
+                    return;
+                }
+
                 StartListeningButton.Content = "Try Again";
                 StartListeningButton.IsEnabled = true;
             };
@@ -74,6 +83,15 @@ namespace GestureVault
         // ── Button handlers ───────────────────────────────────────────────────
         private void StartListeningButton_Click(object sender, RoutedEventArgs e)
         {
+            if (AuthAttemptService.IsLocked("Voice", out string lockoutMessage))
+            {
+                VoiceStatusText.Text = "Voice locked";
+                VoiceInstructionText.Text = lockoutMessage;
+                StartListeningButton.Content = "Locked";
+                StartListeningButton.IsEnabled = false;
+                return;
+            }
+
             // Update UI to listening state
             VoiceStatusText.Text = "Listening...";
             VoiceInstructionText.Text = "Speak your passphrase now.";

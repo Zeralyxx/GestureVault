@@ -113,6 +113,9 @@ namespace GestureVault
 
         private void GestureMatched()
         {
+            if (_gestureIndex == _gestureSequence.Length - 1)
+                AuthAttemptService.Reset("Gesture");
+
             CancelGestureCountdown();
             _waitingForNextGesture = true;
             GestureStatusText.Text = $"{GestureStepLabel()} recognized";
@@ -125,11 +128,25 @@ namespace GestureVault
         }
         private void GestureMismatched(string detected)
         {
+            CancelGestureCountdown();
+            _acceptingGesture = false;
+            string remainingMessage = AuthAttemptService.RegisterFailure("Gesture");
             GestureStatusText.Text = "Wrong gesture";
-            DetectedGestureText.Text = "Gesture not accepted. Return your palm to the center and try again.";
+            DetectedGestureText.Text = $"{GestureDirectionToEmoji(detected)} was not accepted. {remainingMessage}";
 
-            // Flash the detection area to indicate mismatch
-            // (Simple version: just show text, could add animation later)
+            if (AuthAttemptService.IsLocked("Gesture", out string lockoutMessage))
+            {
+                GestureStatusText.Text = "Gesture locked";
+                DetectedGestureText.Text = lockoutMessage;
+                StartCameraButton.IsEnabled = false;
+                RedoGestureButton.IsEnabled = false;
+                NextGestureButton.IsEnabled = false;
+                _gestureService?.Stop();
+                return;
+            }
+
+            RedoGestureButton.Content = "Try Again";
+            RedoGestureButton.IsEnabled = true;
         }
 
         private static string NormalizeSavedGesture(string gesture) => gesture switch
@@ -150,6 +167,11 @@ namespace GestureVault
             "THUMB_DOWN" => "Thumbs down",
             "VICTORY" => "Victory",
             "I_LOVE_YOU" => "I love you",
+            "OK_SIGN" => "OK sign",
+            "ROCK" => "Rock",
+            "THREE" => "Three fingers",
+            "FOUR" => "Four fingers",
+            "CALL_ME" => "Call me",
             "SWIPE_RIGHT" => "👋 Swipe Right",
             "SWIPE_LEFT" => "👈 Swipe Left",
             "SWIPE_UP" => "👆 Swipe Up",
@@ -238,6 +260,14 @@ namespace GestureVault
 
             if (_gestureService == null || !_gestureService.IsRunning)
             {
+                if (AuthAttemptService.IsLocked("Gesture", out string lockoutMessage))
+                {
+                    GestureStatusText.Text = "Gesture locked";
+                    DetectedGestureText.Text = lockoutMessage;
+                    StartCameraButton.IsEnabled = false;
+                    return;
+                }
+
                 try
                 {
                     _gestureService?.Start();

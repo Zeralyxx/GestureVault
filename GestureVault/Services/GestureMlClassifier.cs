@@ -10,6 +10,7 @@ namespace GestureVault.Services
     internal sealed class GestureMlClassifier : IDisposable
     {
         private const string ModelRelativePath = "Assets/Models/GestureModel.zip";
+        private const string LegacyModelRelativePath = "Models/GestureModel.zip";
         private const float MinimumConfidence = 0.70f;
 
         private readonly MLContext _mlContext = new(seed: 1);
@@ -64,10 +65,26 @@ namespace GestureVault.Services
             string[] candidates =
             {
                 Path.Combine(AppContext.BaseDirectory, ModelRelativePath),
-                Path.Combine(Directory.GetCurrentDirectory(), ModelRelativePath)
+                Path.Combine(Directory.GetCurrentDirectory(), ModelRelativePath),
+                Path.Combine(AppContext.BaseDirectory, LegacyModelRelativePath),
+                Path.Combine(Directory.GetCurrentDirectory(), LegacyModelRelativePath)
             };
 
-            return candidates.FirstOrDefault(File.Exists);
+            string? resolved = candidates.FirstOrDefault(File.Exists);
+            if (resolved != null)
+                return resolved;
+
+            string? directory = AppContext.BaseDirectory;
+            for (int i = 0; i < 8 && !string.IsNullOrWhiteSpace(directory); i++)
+            {
+                string candidate = Path.Combine(directory, LegacyModelRelativePath);
+                if (File.Exists(candidate))
+                    return candidate;
+
+                directory = Directory.GetParent(directory)?.FullName;
+            }
+
+            return null;
         }
 
         private static string? NormalizeLabel(string? label)
@@ -87,6 +104,22 @@ namespace GestureVault.Services
                 "OPEN_HAND" => "OPEN_HAND",
                 "FIST" => "FIST",
                 "POINT" => "POINT",
+                "THUMBUP" => "THUMB_UP",
+                "THUMB_UP" => "THUMB_UP",
+                "THUMBDOWN" => "THUMB_DOWN",
+                "THUMB_DOWN" => "THUMB_DOWN",
+                "VICTORY" => "VICTORY",
+                "ILOVEYOU" => "I_LOVE_YOU",
+                "I_LOVE_YOU" => "I_LOVE_YOU",
+                "OK" => "OK_SIGN",
+                "OKSIGN" => "OK_SIGN",
+                "OK_SIGN" => "OK_SIGN",
+                "ROCK" => "ROCK",
+                "HORNS" => "ROCK",
+                "THREE" => "THREE",
+                "FOUR" => "FOUR",
+                "CALLME" => "CALL_ME",
+                "CALL_ME" => "CALL_ME",
                 "NOHAND" => null,
                 "NO_HAND" => null,
                 _ => null

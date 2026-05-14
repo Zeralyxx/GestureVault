@@ -44,6 +44,9 @@ def choose_gesture(categories):
     else:
         best = max(normalized, key=lambda item: item[1])
 
+    if best[0] == "OPEN_HAND" and best[1] >= 0.50:
+        return best[0], best[1]
+
     if best[0] != "OPEN_HAND" and best[1] >= 0.55:
         return best[0], best[1]
 
@@ -85,6 +88,19 @@ def thumb_extended(landmarks, handedness):
     return horizontal and away_from_palm or thumbs_up_shape
 
 
+def thumb_strong_sideways(landmarks):
+    tip = landmarks[4]
+    ip = landmarks[3]
+    mcp = landmarks[2]
+    wrist = landmarks[0]
+
+    return (
+        abs(tip.x - mcp.x) > 0.14
+        and abs(tip.x - wrist.x) > abs(ip.x - wrist.x) + 0.045
+        and distance(tip, landmarks[9]) > 0.18
+    )
+
+
 def classify_landmarks(landmarks, handedness):
     if not landmarks:
         return None
@@ -99,22 +115,44 @@ def classify_landmarks(landmarks, handedness):
     ring_folded = finger_folded(landmarks, 16, 14, 13)
     pinky_folded = finger_folded(landmarks, 20, 18, 17)
     thumb = thumb_extended(landmarks, handedness)
+    thumb_sideways = thumb_strong_sideways(landmarks)
+    thumb_index_touching = distance(landmarks[4], landmarks[8]) < 0.075
 
     extended_count = sum([index, middle, ring, pinky])
     folded_count = sum([index_folded, middle_folded, ring_folded, pinky_folded])
 
+    if thumb_index_touching and middle and ring and pinky:
+        return "OK_SIGN", 0.88
+
+    if thumb and pinky and index_folded and middle_folded and ring_folded:
+        return "CALL_ME", 0.86
+
+    if index and middle_folded and ring_folded and pinky_folded:
+        return "POINT", 0.90
+
+    if index and pinky and middle_folded and ring_folded:
+        if thumb_sideways:
+            return "I_LOVE_YOU", 0.86
+        return "ROCK", 0.88
+
+    if thumb_sideways and index and pinky and middle_folded and ring_folded:
+        return "I_LOVE_YOU", 0.86
+
     if folded_count >= 3 and extended_count <= 1:
-        if thumb and landmarks[4].y < landmarks[3].y < landmarks[2].y:
+        if thumb and not index and pinky_folded and landmarks[4].y < landmarks[3].y < landmarks[2].y:
             return "THUMB_UP", 0.82
-        if thumb and landmarks[4].y > landmarks[3].y > landmarks[2].y:
+        if thumb and not index and pinky_folded and landmarks[4].y > landmarks[3].y > landmarks[2].y:
             return "THUMB_DOWN", 0.82
         return "FIST", 0.86
 
     if index and middle and ring_folded and pinky_folded:
         return "VICTORY", 0.88
 
-    if index and middle_folded and ring_folded and pinky_folded:
-        return "POINT", 0.86
+    if index and middle and ring and pinky_folded:
+        return "THREE", 0.84
+
+    if index and middle and ring and pinky and not thumb:
+        return "FOUR", 0.84
 
     if extended_count >= 4 and folded_count == 0:
         return "OPEN_HAND", 0.84

@@ -38,7 +38,7 @@
                       HorizontalScrollBarVisibility="Disabled">
             <Grid Padding="24,40,24,40">
                 <StackPanel HorizontalAlignment="Center"
-                            Width="460" MaxWidth="460"
+                            Width="560" MaxWidth="560"
                             Spacing="28">
 
                     <!-- ── Brand ───────────────────────────────────────────── -->
@@ -352,7 +352,7 @@
                             <StackPanel Spacing="20">
 
                                 <!-- Camera preview area -->
-                                <Border Height="180" CornerRadius="18"
+                                <Border Height="260" CornerRadius="18"
                                     Background="#0F0F0F"
                                     BorderBrush="{ThemeResource AccentBrush}" 
                                     BorderThickness="2">
@@ -360,7 +360,7 @@
                                         <!-- Live camera feed -->
                                         <Image x:Name="RegistrationCameraPreview"
                                             Stretch="Uniform"
-                                            Height="180"/>
+                                            Height="260"/>
 
                                         <!-- Placeholder when camera is off -->
                                         <StackPanel x:Name="RegistrationCameraPlaceholder"
@@ -415,17 +415,25 @@
                                     Style="{StaticResource PrimaryActionButtonStyle}"
                                     Click="StartRegistrationCamera_Click"/>
 
-
-                                <Button x:Name="RedoRegistrationGestureButton"
-                                    Content="Redo Gesture"
-                                    Style="{StaticResource SecondaryActionButtonStyle}"
-                                    IsEnabled="False"
-                                    Click="RedoRegistrationGesture_Click"/>
-                                <Button x:Name="NextRegistrationGestureButton"
-                                    Content="Next Gesture"
-                                    Style="{StaticResource SecondaryActionButtonStyle}"
-                                    IsEnabled="False"
-                                    Click="NextRegistrationGesture_Click"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="RedoRegistrationGestureButton"
+                                        Grid.Column="0"
+                                        Content="Previous Gesture"
+                                        Style="{StaticResource SecondaryActionButtonStyle}"
+                                        IsEnabled="False"
+                                        Click="RedoRegistrationGesture_Click"/>
+                                    <Button x:Name="NextRegistrationGestureButton"
+                                        Grid.Column="2"
+                                        Content="Next Gesture"
+                                        Style="{StaticResource SecondaryActionButtonStyle}"
+                                        IsEnabled="False"
+                                        Click="NextRegistrationGesture_Click"/>
+                                </Grid>
 
                                 <!-- Detected gesture display -->
                                 <Border CornerRadius="14" Padding="16"

@@ -10,6 +10,7 @@ namespace GestureVault.Services
     internal sealed class MediaPipeGestureRecognizer : IDisposable
     {
         private const string ModelRelativePath = "Assets/Models/gesture_recognizer.task";
+        private const string LegacyModelRelativePath = "Models/gesture_recognizer.task";
         private const string ScriptRelativePath = "Tools/mediapipe_gesture_recognizer.py";
         private const float MinimumConfidence = 0.50f;
         private readonly object _gate = new();
@@ -81,18 +82,35 @@ namespace GestureVault.Services
             if (scriptPath == null || modelPath == null)
                 return;
 
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "python",
-                Arguments = $"\"{scriptPath}\" \"{modelPath}\"",
-                UseShellExecute = false,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
+            _process =
+                StartPythonProcess("python", $"\"{scriptPath}\" \"{modelPath}\"") ??
+                StartPythonProcess("py", $"-3 \"{scriptPath}\" \"{modelPath}\"");
 
-            _process = Process.Start(startInfo);
+            if (_process == null)
+                _disabled = true;
+        }
+
+        private static Process? StartPythonProcess(string fileName, string arguments)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = fileName,
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                return Process.Start(startInfo);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static string? ReadLineWithTimeout(Process process, TimeSpan timeout)
@@ -119,13 +137,14 @@ namespace GestureVault.Services
             }
         }
 
-        private static string? ResolveModelPath() => ResolvePath(ModelRelativePath);
+        private static string? ResolveModelPath() =>
+            ResolvePath(ModelRelativePath) ?? ResolvePath(LegacyModelRelativePath);
 
         private static string? ResolveScriptPath() => ResolvePath(ScriptRelativePath);
 
         private static string? ResolvePath(string relativePath)
         {
-            string[] candidates =
+            var candidates = new System.Collections.Generic.List<string>
             {
                 Path.Combine(AppContext.BaseDirectory, relativePath),
                 Path.Combine(Directory.GetCurrentDirectory(), relativePath)
@@ -135,6 +154,16 @@ namespace GestureVault.Services
             {
                 if (File.Exists(candidate))
                     return candidate;
+            }
+
+            string? directory = AppContext.BaseDirectory;
+            for (int i = 0; i < 8 && !string.IsNullOrWhiteSpace(directory); i++)
+            {
+                string candidate = Path.Combine(directory, relativePath);
+                if (File.Exists(candidate))
+                    return candidate;
+
+                directory = Directory.GetParent(directory)?.FullName;
             }
 
             return null;
