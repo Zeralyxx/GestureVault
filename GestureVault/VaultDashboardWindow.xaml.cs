@@ -50,7 +50,7 @@ namespace GestureVault
         // ── Auto-lock ─────────────────────────────────────────────────────────
         private DispatcherQueueTimer? _autoLockTimer;
         private int _autoLockMinutes = 5;
-        private int _authLockoutSeconds = 30;
+        private int _authLockoutSeconds = 300;
         private bool _autoLockEnabled = true;
         private bool _isLightMode = true;
         private bool _currentPasswordVisible = false;
@@ -1347,7 +1347,7 @@ namespace GestureVault
             var settings = ApplicationData.Current.LocalSettings;
             _autoLockEnabled = settings.Values["AutoLockEnabled"] as bool? ?? true;
             _autoLockMinutes = settings.Values["AutoLockMinutes"] as int? ?? 5;
-            _authLockoutSeconds = settings.Values["AuthLockoutSeconds"] as int? ?? 30;
+            _authLockoutSeconds = 300;
             _isLightMode = settings.Values["IsLightMode"] as bool? ?? true;
 
             AutoLockToggle.IsOn = _autoLockEnabled;
@@ -1363,14 +1363,7 @@ namespace GestureVault
                 30 => 3,
                 _ => 1
             };
-            AuthLockoutCombo.SelectedIndex = _authLockoutSeconds switch
-            {
-                30 => 0,
-                60 => 1,
-                300 => 2,
-                600 => 3,
-                _ => 0
-            };
+            AuthLockoutCombo.SelectedIndex = 0;
             ApplyTheme(_isLightMode);
         }
 
@@ -1896,14 +1889,7 @@ namespace GestureVault
                 3 => 30,
                 _ => 5
             };
-            _authLockoutSeconds = AuthLockoutCombo.SelectedIndex switch
-            {
-                0 => 30,
-                1 => 60,
-                2 => 300,
-                3 => 600,
-                _ => 30
-            };
+            _authLockoutSeconds = 300;
 
             var settings = ApplicationData.Current.LocalSettings;
             settings.Values["AutoLockEnabled"] = _autoLockEnabled;

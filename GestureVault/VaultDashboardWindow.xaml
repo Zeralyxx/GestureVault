@@ -474,11 +474,9 @@
 
                             <ComboBox x:Name="AuthLockoutCombo" Header="Failed-login timeout"
                                       SelectedIndex="0" HorizontalAlignment="Stretch"
-                                      CornerRadius="12">
-                                <ComboBoxItem Content="30 seconds"/>
-                                <ComboBoxItem Content="1 minute"/>
+                                      CornerRadius="12"
+                                      IsEnabled="False">
                                 <ComboBoxItem Content="5 minutes"/>
-                                <ComboBoxItem Content="10 minutes"/>
                             </ComboBox>
 
                             <ToggleSwitch x:Name="LightModeToggle"

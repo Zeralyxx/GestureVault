@@ -5,18 +5,21 @@ namespace GestureVault.Services
 {
     internal static class AuthAttemptService
     {
-        private const int MaxAttempts = 3;
-        private const int DefaultLockoutSeconds = 30;
+        private const int MaxAttempts = 5;
+        private const int LockoutSeconds = 300;
+        private const string VaultLockKey = "VaultLockedUntilTicks";
 
         public static bool IsLocked(string factor, out string message)
         {
-            long lockedUntilTicks = GetLong($"{factor}LockedUntilTicks");
+            long lockedUntilTicks = Math.Max(
+                GetLong(VaultLockKey),
+                GetLong($"{factor}LockedUntilTicks"));
             DateTime now = DateTime.UtcNow;
-            int lockoutSeconds = GetLockoutSeconds();
-            long maxLockedUntilTicks = now.AddSeconds(lockoutSeconds).Ticks;
+            long maxLockedUntilTicks = now.AddSeconds(LockoutSeconds).Ticks;
             if (lockedUntilTicks > maxLockedUntilTicks)
             {
                 lockedUntilTicks = maxLockedUntilTicks;
+                Settings.Values[VaultLockKey] = lockedUntilTicks;
                 Settings.Values[$"{factor}LockedUntilTicks"] = lockedUntilTicks;
             }
 
@@ -27,7 +30,7 @@ namespace GestureVault.Services
             }
 
             var remaining = TimeSpan.FromTicks(lockedUntilTicks - now.Ticks);
-            message = $"Too many failed attempts. Try again in {FormatDuration(remaining)}.";
+            message = $"Too many failed attempts. The vault is locked. Try again in {FormatDuration(remaining)}.";
             return true;
         }
 
@@ -37,12 +40,13 @@ namespace GestureVault.Services
             Settings.Values[$"{factor}FailedAttempts"] = attempts;
 
             if (attempts < MaxAttempts)
-                return $"{MaxAttempts - attempts} attempt(s) remaining before a temporary lockout.";
+                return $"{MaxAttempts - attempts} attempt(s) remaining before the vault locks.";
 
-            int lockoutSeconds = GetLockoutSeconds();
-            Settings.Values[$"{factor}LockedUntilTicks"] = DateTime.UtcNow.AddSeconds(lockoutSeconds).Ticks;
+            long lockedUntilTicks = DateTime.UtcNow.AddSeconds(LockoutSeconds).Ticks;
+            Settings.Values[VaultLockKey] = lockedUntilTicks;
+            Settings.Values[$"{factor}LockedUntilTicks"] = lockedUntilTicks;
             Settings.Values[$"{factor}FailedAttempts"] = 0;
-            return $"Too many failed attempts. This step is locked for {FormatDuration(TimeSpan.FromSeconds(lockoutSeconds))}.";
+            return $"Too many failed attempts. The vault is locked for {FormatDuration(TimeSpan.FromSeconds(LockoutSeconds))}.";
         }
 
         public static void Reset(string factor)
@@ -52,12 +56,6 @@ namespace GestureVault.Services
         }
 
         private static ApplicationDataContainer Settings => ApplicationData.Current.LocalSettings;
-
-        private static int GetLockoutSeconds()
-        {
-            int seconds = GetInt("AuthLockoutSeconds");
-            return seconds > 0 ? seconds : DefaultLockoutSeconds;
-        }
 
         private static string FormatDuration(TimeSpan duration)
         {
